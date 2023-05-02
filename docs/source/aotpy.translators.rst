@@ -1,0 +1,53 @@
+aotpy.translators package
+=========================
+
+Submodules
+----------
+
+aotpy.translators.aof module
+----------------------------
+
+.. automodule:: aotpy.translators.aof
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+aotpy.translators.base module
+-----------------------------
+
+.. automodule:: aotpy.translators.base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+aotpy.translators.ciao module
+-----------------------------
+
+.. automodule:: aotpy.translators.ciao
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+aotpy.translators.eso module
+----------------------------
+
+.. automodule:: aotpy.translators.eso
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+aotpy.translators.naomi module
+------------------------------
+
+.. automodule:: aotpy.translators.naomi
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: aotpy.translators
+   :members:
+   :undoc-members:
+   :show-inheritance:
