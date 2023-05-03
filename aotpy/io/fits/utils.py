@@ -117,8 +117,6 @@ def image_from_hdus(hdus: fits.HDUList, index: int = None) -> aotpy.Image:
         List of HDUs from which `Image` is to be extracted.
     index: int, optional
         Index of the HDU that contains the image data. If omitted, the first HDU containing image data is assumed.
-    **kwargs
-        Keyword arguments passed on as options to the file handling function.
     """
     name, data, unit, _time, metadata = _get_image_fields_from_hdus(hdus, index)
     image = aotpy.Image(name=name, data=data, unit=unit, metadata=metadata)

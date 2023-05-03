@@ -4,6 +4,8 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 import os
 import sys
+from importlib import metadata
+
 sys.path.insert(0, os.path.abspath('../../.'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -11,7 +13,11 @@ sys.path.insert(0, os.path.abspath('../../.'))
 project = 'aotpy'
 copyright = '2023, Faculdade de Engenharia da Universidade do Porto'
 author = 'Tiago Gomes'
-release = '0.4.0'
+# release = '0.4.0'
+
+release = metadata.version(project)
+# The short X.Y version.
+version = ".".join(release.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

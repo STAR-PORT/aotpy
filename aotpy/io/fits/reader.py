@@ -81,9 +81,6 @@ class FITSReader(SystemReader):
         """
         Initialize data structures necessary for reading the file.
         """
-        self._primary_header: fits.Header = None
-        self._system: aotpy.AOSystem = None
-
         self._images: dict[str, list] = {}
         self._time: dict[str, list] = {}
         self._geometries: dict[str, list] = {}
@@ -112,8 +109,8 @@ class FITSReader(SystemReader):
 
     def _read(self, **kwargs) -> tuple[aotpy.AOSystem, list]:
         with fits.open(self._filename, **kwargs) as hdus:
-            self._primary_header = hdus[0].header
-            self._system = self._check_header()
+            self._primary_header: fits.Header = hdus[0].header
+            self._system: aotpy.AOSystem = self._check_header()
 
             if hdus[0].data is not None:
                 raise ValueError('Primary HDU must have no data.')

@@ -66,7 +66,7 @@ class AOSystem:
     loops: list[Loop] = field(default_factory=list)
     """List of all loops in the system."""
 
-    def write_to_file(self, filename: str | os.PathLike, **kwargs):
+    def write_to_file(self, filename: str | os.PathLike, **kwargs) -> None:
         """
         Writes `AOSystem` to a file. The writing function is deduced by the extension in the specified `filename`.
 
@@ -86,7 +86,7 @@ class AOSystem:
         WriterClass(self).write(filename, **kwargs)
 
     @staticmethod
-    def read_from_file(filename: str | os.PathLike, **kwargs):
+    def read_from_file(filename: str | os.PathLike, **kwargs) -> 'AOSystem':
         """
         Reads `AOSystem` from a file. The reading function is deduced by the extension in the specified `filename`.
 

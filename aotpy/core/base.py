@@ -3,7 +3,6 @@ This module contains a classes used as a base for the rest of the core of aotpy.
 """
 
 from collections import namedtuple
-from collections.abc import MutableSequence, Collection
 from dataclasses import dataclass
 
 __all__ = ['Referenceable', 'Coordinates']

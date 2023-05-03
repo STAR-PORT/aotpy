@@ -42,7 +42,11 @@ class FITSWriter(SystemWriter):
     def __init__(self, system: aotpy.AOSystem) -> None:
         self._system = system
 
-        self._tables: dict[str, dict[str, tuple[object, dict[str, object]]]] = {}
+        self._tables: dict[str, dict[
+            str, tuple[aotpy.Referenceable, dict[str, numbers.Integral | numbers.Real | list | np.ndarray | str]]]] = {}
+        """The outer dictionary converts from table name to the table dictionary. The table dictionary converts from the
+        object uid to a tuple. This tuple contains the object itself and a dictionary that converts from the field names
+        to the values present in the object."""
 
         self._images: dict[str, aotpy.Image] = {}
 
@@ -55,7 +59,7 @@ class FITSWriter(SystemWriter):
 
     def write(self, filename: str | os.PathLike, **kwargs) -> None:
         self.get_hdus().writeto(filename, **kwargs)
-    
+
     def get_hdus(self) -> fits.HDUList:
         """
         Get the list of HDUs that compose the AOT FITS file for the initialized system.
@@ -145,7 +149,8 @@ class FITSWriter(SystemWriter):
         table[obj.uid] = (obj, converted)
         return True
 
-    def _create_row_reference(self, uid: str) -> str:
+    @staticmethod
+    def _create_row_reference(uid: str) -> str:
         return f'{kw.ROW_REFERENCE}<{uid}>'
 
     def _handle_time(self, time: aotpy.Time) -> str | None:

@@ -6,7 +6,7 @@ Not meant to be imported by users.
 import re
 from dataclasses import dataclass
 
-CURRENT_AOT_VERSION = '0.5.0'
+CURRENT_AOT_VERSION = '0.5'
 
 
 @dataclass
