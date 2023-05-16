@@ -63,7 +63,7 @@ class ERISTranslator(ESOTranslator):
         lgs = aotpy.SodiumLaserGuideStar(uid='LGS', laser_launch_telescope=llt)
         self.system.sources.append(lgs)
 
-        eris_data_path = importlib.resources.files('data') / 'ERIS'
+        eris_data_path = importlib.resources.files('aotpy.data') / 'ERIS'
         with importlib.resources.as_file(eris_data_path / 'subap.fits') as p:
             subaperture_mask = image_from_file(p)
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)

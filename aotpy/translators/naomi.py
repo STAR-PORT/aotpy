@@ -42,7 +42,7 @@ class NAOMITranslator(ESOTranslator):
             azimuth=self._azimuth_conversion(main_hdr['ESO TEL AZ']),
             parallactic=main_hdr['ESO TEL PRLTIC']
         )
-        naomi_data_path = importlib.resources.files('data') / 'NAOMI'
+        naomi_data_path = importlib.resources.files('aotpy.data') / 'NAOMI'
         with importlib.resources.as_file(naomi_data_path / 'zernike_control_modes.fits') as p:
             # Load file with the representation of the modes controlled in NAOMI (Zernike modes 2 to 15)
             control_modes = aotpy.Image('CONTROL MODES', fits.getdata(p))

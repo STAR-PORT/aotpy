@@ -61,7 +61,7 @@ class AOFTranslator(ESOTranslator):
         lgs_time = aotpy.Time('LGS Loop Time', timestamps=lgs_timestamps.tolist(),
                               frame_numbers=lgs_frame_numbers.tolist())
 
-        aof_data_path = importlib.resources.files('data') / 'AOF'
+        aof_data_path = importlib.resources.files('aotpy.data') / 'AOF'
         with importlib.resources.as_file(aof_data_path / 'subap.fits') as p:
             subaperture_mask = image_from_file(p)
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)
