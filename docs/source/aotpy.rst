@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    aotpy.core
+   aotpy.data
    aotpy.io
    aotpy.translators
 

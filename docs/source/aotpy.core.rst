@@ -36,14 +36,6 @@ aotpy.core.base module
    :undoc-members:
    :show-inheritance:
 
-aotpy.core.geometry module
---------------------------
-
-.. automodule:: aotpy.core.geometry
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 aotpy.core.image module
 -----------------------
 

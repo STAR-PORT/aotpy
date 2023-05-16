@@ -1,10 +1,10 @@
-data package
-============
+aotpy.data package
+==================
 
 Module contents
 ---------------
 
-.. automodule:: data
+.. automodule:: aotpy.data
    :members:
    :undoc-members:
    :show-inheritance:

@@ -28,6 +28,14 @@ aotpy.translators.ciao module
    :undoc-members:
    :show-inheritance:
 
+aotpy.translators.eris module
+-----------------------------
+
+.. automodule:: aotpy.translators.eris
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 aotpy.translators.eso module
 ----------------------------
 

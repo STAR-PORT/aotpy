@@ -5,4 +5,3 @@ aotpy
    :maxdepth: 4
 
    aotpy
-   data
