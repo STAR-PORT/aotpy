@@ -167,7 +167,7 @@ class ESOTranslator(BaseTranslator):
         return res
 
     @staticmethod
-    def azimuth_conversion(az: float):
+    def _azimuth_conversion(az: float):
         """
         Convert azimuth from ESO's reference frame to AOT's reference frame.
 
@@ -183,7 +183,7 @@ class ESOTranslator(BaseTranslator):
         return -(az - 180) % 360
 
     @staticmethod
-    def get_pixel_data_from_table(pix_loop_frame: fits.FITS_rec) -> np.ndarray:
+    def _get_pixel_data_from_table(pix_loop_frame: fits.FITS_rec) -> np.ndarray:
         """
         Get properly reshaped pixel data from FITS binary table data.
 
@@ -200,3 +200,17 @@ class ESOTranslator(BaseTranslator):
         sizes_y = sizes_y[0]
 
         return pix_loop_frame['Pixels'][:, :sizes_x * sizes_y].reshape(-1, sizes_x, sizes_y)
+
+    @staticmethod
+    def _stack_slopes(data: np.ndarray, slope_axis: int) -> np.ndarray:
+        # ESO slopes are ordered tip1, tilt1, tip2, tilt2, etc., so even numbers are tip and odd numbers are tilt.
+        # We separate and then stack them.
+        if slope_axis == 0:
+            tip = data[::2]
+            tilt = data[1::2]
+        elif slope_axis == 1:
+            tip = data[:, ::2]
+            tilt = data[:, 1::2]
+        else:
+            raise NotImplementedError
+        return np.stack([tip, tilt], axis=1)

@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 
 from .aberration import Aberration
 from .base import Referenceable, Coordinates
-from .geometry import Geometry
 from .image import Image
 from .source import Source
 
@@ -103,7 +102,15 @@ class Detector(Referenceable):
     r"""Inverse of the time needed for the detector to acquire an image and then completely read it out.
     (in frame s\ :math:`^{-1}` units)"""
 
-    geometry: Geometry = None
+    transformation_matrix: Image = None
+    r"""Matrix that defines 2-dimensional affine transformations over time (:math:`t`) using homogeneous coordinates.
+    Any combination of translation, reflection, scale, rotation and shearing can be described via a single
+    :math:`3 \times 3` matrix :math:`M` such that :math:`P' = MP`, where :math:`P` is a
+    :math:`\begin{bmatrix}x & y & 1 \end{bmatrix}` vector (with :math:`x` and :math:`y` being the original horizontal 
+    and vertical coordinates, respectively) and :math:`P'` is a :math:`\begin{bmatrix}x' & y' & 1 \end{bmatrix}`, where
+    :math:`x'` and :math:`y'` are the transformed coordinates. All geometry information must be described relative to
+    the same reference origin point, from which transformations may occur.
+    (Dimensions :math:`3 \times 3 \times t`, dimensionless quantity, using data type flt)"""
 
 
 @dataclass(kw_only=True)
@@ -117,7 +124,16 @@ class ScoringCamera(Referenceable):
     wavelength: float = None
     """'Observation wavelength  (in m units)'"""
 
-    geometry: Geometry = None
+    transformation_matrix: Image = None
+    r"""Matrix that defines 2-dimensional affine transformations over time (:math:`t`) using homogeneous coordinates.
+    Any combination of translation, reflection, scale, rotation and shearing can be described via a single
+    :math:`3 \times 3` matrix :math:`M` such that :math:`P' = MP`, where :math:`P` is a
+    :math:`\begin{bmatrix}x & y & 1 \end{bmatrix}` vector (with :math:`x` and :math:`y` being the original horizontal 
+    and vertical coordinates, respectively) and :math:`P'` is a :math:`\begin{bmatrix}x' & y' & 1 \end{bmatrix}`, where
+    :math:`x'` and :math:`y'` are the transformed coordinates. All geometry information must be described relative to
+    the same reference origin point, from which transformations may occur.
+    (Dimensions :math:`3 \times 3 \times t`, dimensionless quantity, using data type flt)"""
+
     detector: Detector = None
     aberration: Aberration = None
 
@@ -164,7 +180,16 @@ class WavefrontSensor(Referenceable):
     optical_gain: Image = None
     'WFS optical gain over time. (Dimensions :math:`t`, dimensionless quantity, using data type flt)'
 
-    geometry: Geometry = None
+    transformation_matrix: Image = None
+    r"""Matrix that defines 2-dimensional affine transformations over time (:math:`t`) using homogeneous coordinates.
+    Any combination of translation, reflection, scale, rotation and shearing can be described via a single
+    :math:`3 \times 3` matrix :math:`M` such that :math:`P' = MP`, where :math:`P` is a
+    :math:`\begin{bmatrix}x & y & 1 \end{bmatrix}` vector (with :math:`x` and :math:`y` being the original horizontal 
+    and vertical coordinates, respectively) and :math:`P'` is a :math:`\begin{bmatrix}x' & y' & 1 \end{bmatrix}`, where
+    :math:`x'` and :math:`y'` are the transformed coordinates. All geometry information must be described relative to
+    the same reference origin point, from which transformations may occur.
+    (Dimensions :math:`3 \times 3 \times t`, dimensionless quantity, using data type flt)"""
+
     detector: Detector = None
     aberration: Aberration = None
     non_common_path_aberration: Aberration = None

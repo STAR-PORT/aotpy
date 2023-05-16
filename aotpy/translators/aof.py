@@ -48,7 +48,7 @@ class AOFTranslator(ESOTranslator):
         # We have to subtract one because the array uses one-based indexing unlike Python
 
         self.dsm = aotpy.DeformableMirror(
-            uid=f'DSM',
+            uid='DSM',
             telescope=self.system.main_telescope,
             n_valid_actuators=self.dsm_valid.size,
         )
@@ -81,17 +81,9 @@ class AOFTranslator(ESOTranslator):
             lgs = aotpy.SodiumLaserGuideStar(uid=f'LGS{i}', laser_launch_telescope=llt)
             self.system.sources.append(lgs)
 
-            gradients = lgs_loop_frame[f'WFS{i}_Gradients']
-            # AOF gradients are ordered tip1, tilt1, tip2, tilt2, etc., so even numbers are tip and odd numbers are tilt
-            # We separate them, select the valid subapertures and then stack them
-            tip = gradients[:, ::2]
-            tilt = gradients[:, 1::2]
-            gradients = np.stack([tip, tilt], axis=1)
-
-            reference = fits.getdata(path_lgs / f'LGSAcq.DET{i}.REFSLP_WITH_OFFSETS.fits')[0]
-            tip = reference[::2]
-            tilt = reference[1::2]
-            reference = np.stack([tip, tilt], axis=0)
+            gradients = self._stack_slopes(lgs_loop_frame[f'WFS{i}_Gradients'], slope_axis=1)
+            reference = self._stack_slopes(fits.getdata(path_lgs / f'LGSAcq.DET{i}.REFSLP_WITH_OFFSETS.fits'),
+                                           slope_axis=1)[0]
             wfs = aotpy.ShackHartmann(
                 uid=f'LGS WFS{i}',
                 source=lgs,
@@ -109,15 +101,8 @@ class AOFTranslator(ESOTranslator):
             )
             self.system.wavefront_sensors.append(wfs)
 
-            cm = fits.getdata(path_lgs / f'LGSRecn.REC{i}.HOCM.fits')[self.dsm_valid]
-            tip = cm[:, ::2]
-            tilt = cm[:, 1::2]
-            cm = np.stack([tip, tilt], axis=1)
-
-            im = im_list[i - 1]
-            tip = im[::2]
-            tilt = im[1::2]
-            im = np.stack([tip, tilt], axis=1)
+            cm = self._stack_slopes(fits.getdata(path_lgs / f'LGSRecn.REC{i}.HOCM.fits')[self.dsm_valid], slope_axis=1)
+            im = self._stack_slopes(im_list[i - 1], slope_axis=0)
             self.system.loops.append(aotpy.ControlLoop(
                 uid=f'High-order loop {i}',
                 input_sensor=wfs,
@@ -136,10 +121,7 @@ class AOFTranslator(ESOTranslator):
                 telescope=llt
             )
 
-            cm = fits.getdata(path_lgs / f'JitRecnOptimiser.JitCM{i}.fits')
-            tip = cm[:, ::2]
-            tilt = cm[:, 1::2]
-            cm = np.stack([tip, tilt], axis=1)
+            cm = self._stack_slopes(fits.getdata(path_lgs / f'JitRecnOptimiser.JitCM{i}.fits'), slope_axis=1)
             self.system.loops.append(aotpy.ControlLoop(
                 uid=f'Jitter loop {i}',
                 input_sensor=wfs,
@@ -189,15 +171,8 @@ class AOFTranslator(ESOTranslator):
         ngs = aotpy.NaturalGuideStar('NGS')
         self.system.sources.append(ngs)
 
-        gradients = ir_loop_frame['WFS_Gradients']
-        tip = gradients[:, ::2]
-        tilt = gradients[:, 1::2]
-        gradients = np.stack([tip, tilt], axis=1)
-
-        reference = fits.getdata(path_ir / 'IRAcq.DET1.REFSLP_WITH_OFFSETS.fits')[0]
-        tip = reference[::2]
-        tilt = reference[1::2]
-        reference = np.stack([tip, tilt], axis=0)
+        gradients = self._stack_slopes(ir_loop_frame['WFS_Gradients'], slope_axis=1)
+        reference = self._stack_slopes(fits.getdata(path_ir / 'IRAcq.DET1.REFSLP_WITH_OFFSETS.fits'), slope_axis=1)[0]
         ngs_wfs = aotpy.ShackHartmann(
             uid='NGS WFS1',
             n_valid_subapertures=4,  # All subapertures are valid
@@ -227,15 +202,11 @@ class AOFTranslator(ESOTranslator):
             dark=image_from_file(path_ir / 'IRAcq.DET1.DARK.fits'),
             weight_map=image_from_file(path_ir / 'IRAcq.DET1.WEIGHT.fits'),
             pixel_intensities=aotpy.Image(name='NGS Pixels',
-                                          data=self.get_pixel_data_from_table(pix_loop_frame),
+                                          data=self._get_pixel_data_from_table(pix_loop_frame),
                                           time=pix_time)
         )
 
-        s2m = fits.getdata(path_ir / 'IRCtr.SENSOR_2_MODES.fits')
-        tip = s2m[:, ::2]
-        tilt = s2m[:, 1::2]
-        s2m = np.stack([tip, tilt], axis=1)
-
+        s2m = self._stack_slopes(fits.getdata(path_ir / 'IRCtr.SENSOR_2_MODES.fits'), slope_axis=1)
         m2c = fits.getdata(path_ir / 'IRCtr.MODES_2_ACT.fits')[self.dsm_valid]
         self.system.loops.append(aotpy.ControlLoop(
             uid='Low-order loop',

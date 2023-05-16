@@ -41,7 +41,7 @@ class CIAOTranslator(ESOTranslator):
         self.system.main_telescope = aotpy.MainTelescope(
             uid=f'ESO VLT AT{at_number}',
             elevation=main_hdr['ESO TEL ALT'],
-            azimuth=self.azimuth_conversion(main_hdr['ESO TEL AZ']),
+            azimuth=self._azimuth_conversion(main_hdr['ESO TEL AZ']),
             parallactic=main_hdr['ESO TEL PRLTIC']
         )
 
@@ -56,63 +56,44 @@ class CIAOTranslator(ESOTranslator):
         loop_time = aotpy.Time('Loop Time', timestamps=main_timestamps.tolist(),
                                frame_numbers=main_frame_numbers.tolist())
 
-        wfs = aotpy.ShackHartmann('WFS', source=ngs, n_valid_subapertures=68,
-                                  detector=aotpy.Detector('SAPHIRA'))
-
-        gradients = main_loop_frame['Gradients']
-        # AOF gradients are ordered tip1, tilt1, tip2, tilt2, etc., so even numbers are tip and odd numbers are tilt
-        # We separate them, select the valid subapertures and then stack them
-        tip = gradients[:, ::2]
-        tilt = gradients[:, 1::2]
-        gradients = np.stack([tip, tilt], axis=1)
-        wfs.measurements = aotpy.Image('Gradients', gradients, time=loop_time)
-
-        reference = fits.getdata(path / 'Acq.DET1.REFSLP_0001.fits')[0]
-        tip = reference[::2]
-        tilt = reference[1::2]
-        reference = np.stack([tip, tilt], axis=0)
-        wfs.ref_measurements = aotpy.Image('Acq.DET1.REFSLP', reference)
-
-        wfs.subaperture_intensities = aotpy.Image(f'Intensities', main_loop_frame['Intensities'], time=loop_time)
+        gradients = self._stack_slopes(main_loop_frame['Gradients'], slope_axis=1)
+        reference = self._stack_slopes(fits.getdata(path / 'Acq.DET1.REFSLP_0001.fits'), slope_axis=1)[0]
+        wfs = aotpy.ShackHartmann(
+            uid='WFS',
+            source=ngs,
+            n_valid_subapertures=68,
+            detector=aotpy.Detector('SAPHIRA'),
+            measurements=aotpy.Image('Gradients', gradients, time=loop_time),
+            ref_measurements=aotpy.Image('Acq.DET1.REFSLP', reference),
+            subaperture_intensities=aotpy.Image(f'Intensities', main_loop_frame['Intensities'], time=loop_time),
+            centroiding_algorithm=main_hdr['ESO AOS ACQ CENTROID ALGO']
+        )
 
         pix_loop_frame = fits.getdata(path / 'CIAO_PIXELS_0001.fits')
         wfs.detector.pixel_intensities = aotpy.Image(
             'Pixels',
-            data=self.get_pixel_data_from_table(pix_loop_frame),
+            data=self._get_pixel_data_from_table(pix_loop_frame),
             time=aotpy.Time('Pixel time', frame_numbers=pix_loop_frame['FrameCounter'].tolist())
         )
-
-        wfs.centroiding_algorithm = main_hdr['ESO AOS ACQ CENTROID ALGO']
 
         ho_dm = aotpy.DeformableMirror('High Order Deformable Mirror (HODM)', telescope=self.system.main_telescope,
                                        n_valid_actuators=60)
         ittm = aotpy.TipTiltMirror('Image Tip-Tilt Mirror (ITTM)', telescope=self.system.main_telescope)
 
-        cm = fits.getdata(path / 'Recn.REC1.CM_0001.fits')
-        tip = cm[:, ::2]
-        tilt = cm[:, 1::2]
-        cm = np.stack([tip, tilt], axis=1)
+        cm = self._stack_slopes(fits.getdata(path / 'Recn.REC1.CM_0001.fits'), slope_axis=1)
         ho_cm = cm[: ho_dm.n_valid_actuators]
         tt_cm = cm[ho_dm.n_valid_actuators:]
 
-        s2m = fits.getdata(path / 'RecnOptimiser.S2M_0001.fits')
+        s2m = self._stack_slopes(fits.getdata(path / 'RecnOptimiser.S2M_0001.fits'), slope_axis=1)
         if main_hdr['ESO AOS CM MODES CONTROLLED'] != s2m.shape[0]:
             warnings.warn("Keyword 'ESO AOS CM MODES CONTROLLED' does not match modes in measurements to modes matrix")
-        tip = s2m[:, ::2]
-        tilt = s2m[:, 1::2]
-        s2m = np.stack([tip, tilt], axis=1)
         s2m = aotpy.Image('RecnOptimiser.S2M', s2m)
 
         m2c = fits.getdata(path / 'RecnOptimiser.M2V_0001.fits')
         ho_m2c = m2c[:ho_dm.n_valid_actuators]
         tt_m2c = m2c[ho_dm.n_valid_actuators:]
 
-        ho_im = fits.getdata(path / 'RecnOptimiser.HO_IM_0001.fits')
-        tip = ho_im[::2]
-        tilt = ho_im[1::2]
-        ho_im = np.stack([tip, tilt], axis=1)
-        ho_im = aotpy.Image('RecnOptimiser.HO_IM', ho_im)
-
+        ho_im = self._stack_slopes(fits.getdata(path / 'RecnOptimiser.HO_IM_0001.fits'), slope_axis=0)
         ho_loop = aotpy.ControlLoop(
             'HO Loop',
             input_sensor=wfs,
@@ -124,7 +105,7 @@ class CIAOTranslator(ESOTranslator):
             control_matrix=aotpy.Image('HO Control Matrix', ho_cm),
             measurements_to_modes=s2m,
             modes_to_commands=aotpy.Image('HO modes to commands', ho_m2c),
-            interaction_matrix=ho_im,
+            interaction_matrix=aotpy.Image('RecnOptimiser.HO_IM', ho_im),
             framerate=main_hdr['ESO AOS LOOP RATE'],
             closed=main_hdr['ESO AOS HO LOOP ST']
         )

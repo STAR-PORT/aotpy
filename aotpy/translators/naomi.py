@@ -2,6 +2,7 @@
 This module contains a class for translating data produced by ESO's NAOMI system.
 """
 
+import importlib.resources
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -32,15 +33,22 @@ class NAOMITranslator(ESOTranslator):
 
         with fits.open(path / 'NAOMI_LOOP_0001.fits', extname='LoopFrame') as hdus:
             main_hdr = hdus[0].header
-            main_loop_frame = hdus['LoopFrame'].data
+            main_loop_frame: fits.FITS_rec = hdus['LoopFrame'].data
 
         self.system = aotpy.AOSystem(ao_mode='SCAO')
         self.system.main_telescope = aotpy.MainTelescope(
             uid=f'ESO VLT AT{at_number}',
             elevation=main_hdr['ESO TEL ALT'],
-            azimuth=self.azimuth_conversion(main_hdr['ESO TEL AZ']),
+            azimuth=self._azimuth_conversion(main_hdr['ESO TEL AZ']),
             parallactic=main_hdr['ESO TEL PRLTIC']
         )
+        naomi_data_path = importlib.resources.files('data') / 'NAOMI'
+        with importlib.resources.as_file(naomi_data_path / 'zernike_control_modes.fits') as p:
+            # Load file with the representation of the modes controlled in NAOMI (Zernike modes 2 to 15)
+            control_modes = aotpy.Image('CONTROL MODES', fits.getdata(p))
+
+        if main_hdr['ESO AOS CM MODES CONTROLLED'] != control_modes.data.shape[0]:
+            warnings.warn("Keyword 'ESO AOS CM MODES CONTROLLED' does not match expected number of control modes.")
 
         ngs = aotpy.NaturalGuideStar('NGS',
                                      right_ascension=main_hdr['RA'],
@@ -53,72 +61,73 @@ class NAOMITranslator(ESOTranslator):
         loop_time = aotpy.Time('Loop Time', timestamps=main_timestamps.tolist(),
                                frame_numbers=main_frame_numbers.tolist())
 
-        wfs = aotpy.ShackHartmann('WFS', source=ngs, n_valid_subapertures=12,
-                                  detector=aotpy.Detector('DET'))
+        gradients = self._stack_slopes(main_loop_frame['Gradients'], slope_axis=1)
+        reference = self._stack_slopes(fits.getdata(path / 'Acq.DET1.REFSLP_WITH_OFFSETS_0001.fits'), slope_axis=1)[0]
+        wfs = aotpy.ShackHartmann(
+            uid='WFS',
+            source=ngs,
+            n_valid_subapertures=12,
+            measurements=aotpy.Image('Gradients', gradients, time=loop_time),
+            ref_measurements=aotpy.Image('Acq.DET1.REFSLP_WITH_OFFSETS', reference),
+            subaperture_intensities=aotpy.Image(f'Intensities', main_loop_frame['Intensities'], time=loop_time)
+        )
 
-        gradients = main_loop_frame['Gradients']
-        # AOF gradients are ordered tip1, tilt1, tip2, tilt2, etc., so even numbers are tip and odd numbers are tilt
-        # We separate them, select the valid subapertures and then stack them
-        tip = gradients[:, ::2]
-        tilt = gradients[:, 1::2]
-        gradients = np.stack([tip, tilt], axis=1)
+        wfs.non_common_path_aberration = aotpy.Aberration(
+            uid='NCPA',
+            modes=control_modes,
+            coefficients=image_from_file(path / 'Ctr.MODAL_OFFSETS_ROTATED_0001.fits')  # in DM modal space
+        )
 
-        reference = fits.getdata(path / 'Acq.DET1.REFSLP_WITH_OFFSETS_0001.fits')[0]
-        tip = reference[::2]
-        tilt = reference[1::2]
-        reference = np.stack([tip, tilt], axis=0)
-
-        wfs.measurements = aotpy.Image('Gradients', gradients, time=loop_time)
-        wfs.ref_measurements = aotpy.Image('Acq.DET1.REFSLP_WITH_OFFSETS', reference)
-        wfs.subaperture_intensities = aotpy.Image(f'Intensities', main_loop_frame['Intensities'], time=loop_time)
-
-        wfs.detector.weight_map = image_from_file(path / 'Acq.DET1.WEIGHT_0001.fits')
-        wfs.detector.dark = image_from_file(path / 'Acq.DET1.DARK_0001.fits')
-        wfs.detector.flat_field = image_from_file(path / 'Acq.DET1.FLAT_0001.fits')
-        wfs.detector.bad_pixel_map = image_from_file(path / 'Acq.DET1.DEAD_0001.fits')
-        wfs.detector.sky_background = image_from_file(path / 'Acq.DET1.BACKGROUND_0001.fits')
+        wfs.detector = aotpy.Detector(
+            uid='DET',
+            weight_map=image_from_file(path / 'Acq.DET1.WEIGHT_0001.fits'),
+            dark=image_from_file(path / 'Acq.DET1.DARK_0001.fits'),
+            flat_field=image_from_file(path / 'Acq.DET1.FLAT_0001.fits'),
+            bad_pixel_map=image_from_file(path / 'Acq.DET1.DEAD_0001.fits'),
+            sky_background=image_from_file(path / 'Acq.DET1.BACKGROUND_0001.fits')
+        )
 
         pix_loop_frame = fits.getdata(path / 'NAOMI_PIXELS_0001.fits')
         wfs.detector.pixel_intensities = aotpy.Image(
             'Pixels',
-            data=self.get_pixel_data_from_table(pix_loop_frame),
+            data=self._get_pixel_data_from_table(pix_loop_frame),
             time=aotpy.Time('Pixel time', frame_numbers=pix_loop_frame['FrameCounter'].tolist())
         )
 
         dm = aotpy.DeformableMirror('DM', telescope=self.system.main_telescope, n_valid_actuators=241)
 
-        loop = aotpy.ControlLoop('Main Loop', input_sensor=wfs, commanded_corrector=dm, time=loop_time)
-        loop.time_filter_num = aotpy.Image('Ctr.TERM_A', fits.getdata(path / 'Ctr.TERM_A_0001.fits'))
-        loop.time_filter_den = aotpy.Image('Ctr.TERM_B', fits.getdata(path / 'Ctr.TERM_B_0001.fits'))
+        modal_coefficients = main_loop_frame['ModalCoefficients']
+        modal_coefficients += fits.getdata(path / 'Ctr.MODAL_OFFSETS_ROTATED_0001.fits') * 2
+        # These are saved in the DM modal space. Need to add the rotated offsets to get the real coefficients that are
+        # then sent to the DM after M2DM conversion.
+        s2m = self._stack_slopes(fits.getdata(path / 'Recn.REC1.CM_0001.fits'), slope_axis=1)
+        # The S2M matrix is already rotated to to DM modes
+        m2s = self._stack_slopes(fits.getdata(path / 'ModalRecnCalibrat.REF_IM_0001.fits'), slope_axis=0)
 
-        loop.commands = aotpy.Image('DM positions', main_loop_frame['Positions'], time=loop_time)
-        # loop.ref_commands = image_from_file(path / 'Ctr.ACT_POS_REF_MAP_0001.fits')
-        # loop.ref_commands.data = loop.ref_commands.data[0]
-        loop.ref_commands = aotpy.Image('Ctr.ACT_POS_REF_MAP', fits.getdata(path / 'Ctr.ACT_POS_REF_MAP_0001.fits'))
+        try:
+            ref_commands = aotpy.Image('Ctr.ACT_POS_REF_MAP', fits.getdata(path / 'Ctr.ACT_POS_REF_MAP_0001.fits')[0])
+        except FileNotFoundError:
+            ref_commands = None
+            warnings.warn("Reference commands file not found ('Ctr.ACT_POS_REF_MAP_0001.fits').")
 
-        derotation_matrix = fits.getdata(path / 'RecnOptimiser.ROTATION_MATRIX_0001.fits').T
-
-        s2m = fits.getdata(path / 'Recn.REC1.CM_0001.fits')
-        s2m = s2m.T @ derotation_matrix
-        tip = s2m[::2]
-        tilt = s2m[1::2]
-        s2m = np.stack([tip, tilt], axis=1).T
-        loop.measurements_to_modes = aotpy.Image('Recn.REC1.CM', s2m)
-
-        loop.modes_to_commands = image_from_file(path / 'RTC.M2DM_SCALED_0001.fits')
-
-        if main_hdr['ESO AOS CM MODES CONTROLLED'] != s2m.shape[0]:
-            warnings.warn("Keyword 'ESO AOS CM MODES CONTROLLED' does not match modes in control matrix")
-
-        loop.commands_to_modes = image_from_file(path / 'RTC.DM2M_SCALED_0001.fits')
-        m2s = fits.getdata(path / 'ModalRecnCalibrat.REF_IM_0001.fits')
-        tip = m2s[::2]
-        tilt = m2s[1::2]
-        m2s = np.stack([tip, tilt], axis=1)
-        loop.modes_to_measurements = aotpy.Image('ModalRecnCalibrat.REF_IM', m2s)
-
-        loop.closed = main_hdr['ESO AOS LOOP ST']
-        loop.framerate = main_hdr['ESO AOS LOOP RATE']
+        loop = aotpy.ControlLoop(
+            uid='Main Loop',
+            input_sensor=wfs,
+            commanded_corrector=dm,
+            time=loop_time,
+            time_filter_num=aotpy.Image('Ctr.TERM_A', fits.getdata(path / 'Ctr.TERM_A_0001.fits')),
+            time_filter_den=aotpy.Image('Ctr.TERM_B', fits.getdata(path / 'Ctr.TERM_B_0001.fits')),
+            commands=aotpy.Image('DM positions', main_loop_frame['Positions'], time=loop_time),
+            ref_commands=ref_commands,
+            modes=control_modes,
+            modal_coefficients=aotpy.Image('Modal Coefficients', modal_coefficients, time=loop_time),
+            measurements_to_modes=aotpy.Image('Recn.REC1.CM', s2m),
+            modes_to_commands=image_from_file(path / 'RTC.M2DM_SCALED_0001.fits'),
+            commands_to_modes=image_from_file(path / 'RTC.DM2M_SCALED_0001.fits'),
+            modes_to_measurements=aotpy.Image('ModalRecnCalibrat.REF_IM', m2s),
+            closed=main_hdr['ESO AOS LOOP ST'],
+            framerate=main_hdr['ESO AOS LOOP RATE']
+        )
 
         asm = aotpy.AtmosphericParameters(
             'ESO ASM (Astronomical Site Monitor)',

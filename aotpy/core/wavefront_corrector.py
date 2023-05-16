@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 
 from .aberration import Aberration
 from .base import Referenceable, Coordinates
-from .geometry import Geometry
 from .image import Image
 from .telescope import Telescope
 
@@ -31,7 +30,16 @@ class WavefrontCorrector(Referenceable):
     tfz_den: list[float] = field(default_factory=list)
     'List of denominators of the transfer function Z. (dimensionless quantity)'
 
-    geometry: Geometry = None
+    transformation_matrix: Image = None
+    r"""Matrix that defines 2-dimensional affine transformations over time (:math:`t`) using homogeneous coordinates.
+    Any combination of translation, reflection, scale, rotation and shearing can be described via a single
+    :math:`3 \times 3` matrix :math:`M` such that :math:`P' = MP`, where :math:`P` is a
+    :math:`\begin{bmatrix}x & y & 1 \end{bmatrix}` vector (with :math:`x` and :math:`y` being the original horizontal 
+    and vertical coordinates, respectively) and :math:`P'` is a :math:`\begin{bmatrix}x' & y' & 1 \end{bmatrix}`, where
+    :math:`x'` and :math:`y'` are the transformed coordinates. All geometry information must be described relative to
+    the same reference origin point, from which transformations may occur.
+    (Dimensions :math:`3 \times 3 \times t`, dimensionless quantity, using data type flt)"""
+
     aberration: Aberration = None
 
     def __post_init__(self):

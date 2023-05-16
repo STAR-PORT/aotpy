@@ -83,7 +83,6 @@ class FITSReader(SystemReader):
         """
         self._images: dict[str, list] = {}
         self._time: dict[str, list] = {}
-        self._geometries: dict[str, list] = {}
         self._aberrations: dict[str, list] = {}
         self._telescopes: dict[str, list] = {}
         self._sources: dict[str, list] = {}
@@ -93,7 +92,6 @@ class FITSReader(SystemReader):
 
         self._table_to_dict = {
             kw.TIME_TABLE: self._time,
-            kw.GEOMETRY_TABLE: self._geometries,
             kw.ABERRATIONS_TABLE: self._aberrations,
             kw.TELESCOPES_TABLE: self._telescopes,
             kw.SOURCES_TABLE: self._sources,
@@ -135,7 +133,7 @@ class FITSReader(SystemReader):
                     else:
                         self._extra_hdus.append(hdu)
             if self._extra_hdus and not self._extra_data_flag:
-                warnings.warn(f"""File contains non-standard HDUs that were ignored: """
+                warnings.warn(f"""File contains non-AOT HDUs that were ignored: """
                               f"""{', '.join([f"'{x.name}'" for x in self._extra_hdus])}""")
 
             for name, count in table_count.items():
@@ -153,7 +151,6 @@ class FITSReader(SystemReader):
                 image = tup[0]
                 image.time = self._handle_reference(image._time, kw.TIME_TABLE)
 
-            self._handle_geometry(hdus)
             self._handle_atmosphere(hdus)
             self._handle_aberrations(hdus)
             self._handle_telescopes(hdus)
@@ -231,7 +228,7 @@ class FITSReader(SystemReader):
             if card.keyword not in kw.AOT_HEADER_SET and keyword_is_relevant(card.keyword):
                 self._extra_header.append(card)
         if self._extra_header and not self._extra_data_flag:
-            warnings.warn(f"""Header contains non-standard keywords that were ignored: """
+            warnings.warn(f"""Header contains non-AOT keywords that were ignored: """
                           f"""{', '.join([f"'{x.keyword}'" for x in self._extra_header])}""")
 
         return aotpy.AOSystem(ao_mode=ao_mode, date_beginning=beg, date_end=end, strehl_ratio=strehl_ratio,
@@ -262,7 +259,7 @@ class FITSReader(SystemReader):
             else:
                 self._extra_columns.setdefault(table_name, []).append(col)
         if table_name in self._extra_columns and not self._extra_data_flag:
-            warnings.warn(f"""Table '{table_name}' contains non-standard columns that were ignored: """
+            warnings.warn(f"""Table '{table_name}' contains non-AOT columns that were ignored: """
                           f"""{', '.join([f"'{x.name}'" for x in self._extra_columns[table_name]])}""")
 
         for name, count in field_count.items():
@@ -273,64 +270,71 @@ class FITSReader(SystemReader):
 
         seq = [field_name for field_name, count in field_count.items() if count > 0]
         if seq != [col.name for col, _ in zip(table.columns.columns, seq)]:
-            warnings.warn(f"Non-standard column sequence in table '{table_name}'.")
+            warnings.warn(f"Non-AOT column sequence in table '{table_name}'.")
 
-    def _handle_reference(self, ref: str, table: str = None):
+    def _handle_image(self, ref: str):
         if ref is None:
             return None
         fullmatch = _reference_pattern.fullmatch(ref)
         if fullmatch is None:
-            warnings.warn(f"Reference '{ref}' was ignored: not properly formatted.")
+            warnings.warn(f"Image reference '{ref}' was ignored: not properly formatted.")
             return None
         prefix, name, index = fullmatch.groups()
 
-        if table is None:
-            match prefix:
-                case kw.INTERNAL_REFERENCE:
+        match prefix:
+            case kw.INTERNAL_REFERENCE:
+                try:
+                    aux = self._images[name]
+                    aux[1] = True
+                    return aux[0]
+                except KeyError:
+                    warnings.warn(f"Could not find internal image referenced by '{ref}'.")
+                    return None
+            case kw.FILE_REFERENCE | kw.URL_REFERENCE:
+                if index is not None:
                     try:
-                        aux = self._images[name]
-                        aux[1] = True
-                        return aux[0]
-                    except KeyError:
-                        warnings.warn(f"Could not find internal image referenced by '{ref}'.")
-                        return None
-                case kw.FILE_REFERENCE | kw.URL_REFERENCE:
-                    if index is not None:
-                        try:
-                            index = int(index)
-                        except ValueError:
-                            warnings.warn(f"Index in file reference '{ref}' was ignored: not properly formatted.")
-                            index = None
-                    if prefix == kw.FILE_REFERENCE:
-                        image = FITSFileImage(name, index)
-                    else:
-                        image = FITSURLImage(name, index)
+                        index = int(index)
+                    except ValueError:
+                        warnings.warn(f"Index in file reference '{ref}' was ignored: not properly formatted.")
+                        index = None
+                if prefix == kw.FILE_REFERENCE:
+                    image = FITSFileImage(name, index)
+                else:
+                    image = FITSURLImage(name, index)
 
-                    image.time = self._handle_reference(image._time, kw.TIME_TABLE)
-                    return image
-
-            warnings.warn(f"Image reference '{ref}' was ignored: not properly formatted.")
-            return None
-
-        if prefix == kw.ROW_REFERENCE:
-            d = self._table_to_dict[table]
-            try:
-                aux = d[name]
-                aux[1] = True
-                return aux[0]
-            except KeyError:
-                warnings.warn(f"Could not find row referenced by '{ref}'. Ignoring reference.")
+                image.time = self._handle_reference(image._time, kw.TIME_TABLE)
+                return image
+            case _:
+                warnings.warn(f"Reference '{ref}' was ignored: expected an image reference.")
                 return None
 
-        warnings.warn(f"Row reference '{ref}' was ignored: not properly formatted.")
-        return None
+    def _handle_reference(self, ref: str, table: str):
+        if ref is None:
+            return None
+        fullmatch = _reference_pattern.fullmatch(ref)
+        if fullmatch is None:
+            warnings.warn(f"Row reference '{ref}' was ignored: not properly formatted.")
+            return None
+        prefix, name, index = fullmatch.groups()
+
+        if prefix != kw.ROW_REFERENCE:
+            warnings.warn(f"Reference '{ref}' was ignored: expected a row reference.")
+            return None
+
+        d = self._table_to_dict[table]
+        try:
+            aux = d[name]
+            aux[1] = True
+            return aux[0]
+        except KeyError:
+            warnings.warn(f"Could not find row referenced by '{ref}'. Ignoring reference.")
+            return None
 
     def _check_usage(self):
         # We don't need to check the usage of atmosphere parameters, sources, scoring cameras, wavefront sensors,
         # wavefront correctors or loops, since they are always referenced by the AOSystem class
         a = [(self._images, 'image extensions'),
              (self._time, 'time rows'),
-             (self._geometries, 'geometry rows'),
              (self._aberrations, 'aberration rows'),
              (self._telescopes, 'telescope rows'),
              (self._detectors, 'detector rows')]
@@ -357,26 +361,6 @@ class FITSReader(SystemReader):
                 frame_numbers=data[kw.TIME_FRAME_NUMBERS]
             ), False]
 
-    def _handle_geometry(self, hdus: fits.HDUList):
-        self._check_bintable(hdus, kw.GEOMETRY_TABLE)
-
-        table = hdus[kw.GEOMETRY_TABLE]
-        columns = table.columns
-        for row in table.data:
-            data = _convert_row(columns, row, kw.GEOMETRY_FIELDS)
-
-            self._geometries[data[kw.REFERENCE_UID]] = [aotpy.Geometry(
-                uid=data[kw.REFERENCE_UID],
-                time=self._handle_reference(data[kw.TIME_REFERENCE], kw.TIME_TABLE),
-                sequence=[aotpy.GeometryInstant(
-                    rotation=rotation,
-                    translation=aotpy.Coordinates(translation_x, translation_y),
-                    magnification=aotpy.Coordinates(magnification_x, magnification_y),
-                ) for rotation, translation_x, translation_y, magnification_x, magnification_y in
-                    zip(data[kw.GEOMETRY_ROTATION], data[kw.GEOMETRY_TRANSLATION_X], data[kw.GEOMETRY_TRANSLATION_Y],
-                        data[kw.GEOMETRY_MAGNIFICATION_X], data[kw.GEOMETRY_MAGNIFICATION_Y])]
-            ), False]
-
     def _handle_atmosphere(self, hdus: fits.HDUList):
         self._check_bintable(hdus, kw.ATMOSPHERIC_PARAMETERS_TABLE)
 
@@ -394,12 +378,12 @@ class FITSReader(SystemReader):
                     fwhm=data[kw.ATMOSPHERIC_PARAMETERS_FWHM],
                     tau0=data[kw.ATMOSPHERIC_PARAMETERS_TAU0],
                     theta0=data[kw.ATMOSPHERIC_PARAMETERS_THETA0],
-                    layers_weight=self._handle_reference(data[kw.ATMOSPHERIC_PARAMETERS_LAYERS_WEIGHT]),
-                    layers_height=self._handle_reference(data[kw.ATMOSPHERIC_PARAMETERS_LAYERS_HEIGHT]),
-                    layers_l0=self._handle_reference(data[kw.ATMOSPHERIC_PARAMETERS_LAYERS_L0]),
-                    layers_wind_speed=self._handle_reference(data[kw.ATMOSPHERIC_PARAMETERS_LAYERS_WIND_SPEED]),
-                    layers_wind_direction=self._handle_reference(data[kw.ATMOSPHERIC_PARAMETERS_LAYERS_WIND_DIRECTION]),
-                    geometry=self._handle_reference(data[kw.GEOMETRY_REFERENCE], kw.GEOMETRY_TABLE)
+                    layers_weight=self._handle_image(data[kw.ATMOSPHERIC_PARAMETERS_LAYERS_WEIGHT]),
+                    layers_height=self._handle_image(data[kw.ATMOSPHERIC_PARAMETERS_LAYERS_HEIGHT]),
+                    layers_l0=self._handle_image(data[kw.ATMOSPHERIC_PARAMETERS_LAYERS_L0]),
+                    layers_wind_speed=self._handle_image(data[kw.ATMOSPHERIC_PARAMETERS_LAYERS_WIND_SPEED]),
+                    layers_wind_direction=self._handle_image(data[kw.ATMOSPHERIC_PARAMETERS_LAYERS_WIND_DIRECTION]),
+                    transformation_matrix=self._handle_image(data[kw.TRANSFORMATION_MATRIX])
                 )
             )
 
@@ -413,8 +397,8 @@ class FITSReader(SystemReader):
 
             self._aberrations[data[kw.REFERENCE_UID]] = [aotpy.Aberration(
                 uid=data[kw.REFERENCE_UID],
-                modes=self._handle_reference(data[kw.ABERRATION_MODES]),
-                coefficients=self._handle_reference(data[kw.ABERRATION_COEFFICIENTS]),
+                modes=self._handle_image(data[kw.ABERRATION_MODES]),
+                coefficients=self._handle_image(data[kw.ABERRATION_COEFFICIENTS]),
                 offsets=[aotpy.Coordinates(x, y)
                          for x, y in zip(data[kw.ABERRATION_X_OFFSETS], data[kw.ABERRATION_Y_OFFSETS])],
             ), False]
@@ -447,7 +431,7 @@ class FITSReader(SystemReader):
             tel.elevation = data[kw.TELESCOPE_ELEVATION]
             tel.azimuth = data[kw.TELESCOPE_AZIMUTH]
             tel.parallactic = data[kw.TELESCOPE_PARALLACTIC]
-            tel.pupil_mask = self._handle_reference(data[kw.TELESCOPE_PUPIL_MASK])
+            tel.pupil_mask = self._handle_image(data[kw.TELESCOPE_PUPIL_MASK])
             tel.pupil_angle = data[kw.TELESCOPE_PUPIL_ANGLE]
             tel.enclosing_diameter = data[kw.TELESCOPE_ENCLOSING_D]
             tel.inscribed_diameter = data[kw.TELESCOPE_INSCRIBED_D]
@@ -469,7 +453,7 @@ class FITSReader(SystemReader):
                                    for x, y in zip(data[kw.TELESCOPE_SEGMENTS_X], data[kw.TELESCOPE_SEGMENTS_Y])]
 
             tel.segments = seg
-            tel.geometry = self._handle_reference(data[kw.GEOMETRY_REFERENCE], kw.GEOMETRY_TABLE)
+            tel.transformation_matrix = self._handle_image(data[kw.TRANSFORMATION_MATRIX])
             tel.aberration = self._handle_reference(data[kw.ABERRATION_REFERENCE], kw.ABERRATIONS_TABLE)
 
     def _handle_sources(self, hdus: fits.HDUList):
@@ -511,7 +495,7 @@ class FITSReader(SystemReader):
                 src = aotpy.SodiumLaserGuideStar(
                     uid=uid,
                     height=other_data[kw.SOURCE_SODIUM_LGS_HEIGHT],
-                    profile=self._handle_reference(other_data[kw.SOURCE_SODIUM_LGS_PROFILE]),
+                    profile=self._handle_image(other_data[kw.SOURCE_SODIUM_LGS_PROFILE]),
                     altitudes=other_data[kw.SOURCE_SODIUM_LGS_ALTITUDES],
                     laser_launch_telescope=self._handle_reference(other_data[kw.LASER_LAUNCH_TELESCOPE_REFERENCE],
                                                                   kw.TELESCOPES_TABLE)
@@ -557,28 +541,28 @@ class FITSReader(SystemReader):
                 type=data[kw.DETECTOR_TYPE],
                 sampling_technique=data[kw.DETECTOR_SAMPLING_TECHNIQUE],
                 shutter_type=data[kw.DETECTOR_SHUTTER_TYPE],
-                flat_field=self._handle_reference(data[kw.DETECTOR_FLAT_FIELD]),
+                flat_field=self._handle_image(data[kw.DETECTOR_FLAT_FIELD]),
                 readout_noise=data[kw.DETECTOR_READOUT_NOISE],
-                pixel_intensities=self._handle_reference(data[kw.DETECTOR_PIXEL_INTENSITIES]),
+                pixel_intensities=self._handle_image(data[kw.DETECTOR_PIXEL_INTENSITIES]),
                 integration_time=data[kw.DETECTOR_INTEGRATION_TIME],
                 coadds=data[kw.DETECTOR_COADDS],
-                dark=self._handle_reference(data[kw.DETECTOR_DARK]),
-                weight_map=self._handle_reference(data[kw.DETECTOR_WEIGHT_MAP]),
+                dark=self._handle_image(data[kw.DETECTOR_DARK]),
+                weight_map=self._handle_image(data[kw.DETECTOR_WEIGHT_MAP]),
                 quantum_efficiency=data[kw.DETECTOR_QUANTUM_EFFICIENCY],
                 pixel_scale=data[kw.DETECTOR_PIXEL_SCALE],
                 binning=data[kw.DETECTOR_BINNING],
                 bandwidth=data[kw.DETECTOR_BANDWIDTH],
                 transmission_wavelength=data[kw.DETECTOR_TRANSMISSION_WAVELENGTH],
                 transmission=data[kw.DETECTOR_TRANSMISSION],
-                sky_background=self._handle_reference(data[kw.DETECTOR_SKY_BACKGROUND]),
+                sky_background=self._handle_image(data[kw.DETECTOR_SKY_BACKGROUND]),
                 gain=data[kw.DETECTOR_GAIN],
                 excess_noise=data[kw.DETECTOR_EXCESS_NOISE],
                 filter=data[kw.DETECTOR_FILTER],
-                bad_pixel_map=self._handle_reference(data[kw.DETECTOR_BAD_PIXEL_MAP]),
+                bad_pixel_map=self._handle_image(data[kw.DETECTOR_BAD_PIXEL_MAP]),
                 dynamic_range=data[kw.DETECTOR_DYNAMIC_RANGE],
                 readout_rate=data[kw.DETECTOR_READOUT_RATE],
                 frame_rate=data[kw.DETECTOR_FRAME_RATE],
-                geometry=self._handle_reference(data[kw.GEOMETRY_REFERENCE], kw.GEOMETRY_TABLE),
+                transformation_matrix=self._handle_image(data[kw.TRANSFORMATION_MATRIX])
             ), False]
 
     def _handle_scoring_cameras(self, hdus: fits.HDUList):
@@ -591,9 +575,9 @@ class FITSReader(SystemReader):
 
             self._system.scoring_cameras.append(aotpy.ScoringCamera(
                 uid=data[kw.REFERENCE_UID],
-                pupil_mask=self._handle_reference(data[kw.SCORING_CAMERA_PUPIL_MASK]),
+                pupil_mask=self._handle_image(data[kw.SCORING_CAMERA_PUPIL_MASK]),
                 wavelength=data[kw.SCORING_CAMERA_WAVELENGTH],
-                geometry=self._handle_reference(data[kw.GEOMETRY_REFERENCE], kw.GEOMETRY_TABLE),
+                transformation_matrix=self._handle_image(data[kw.TRANSFORMATION_MATRIX]),
                 detector=self._handle_reference(data[kw.DETECTOR_REFERENCE], kw.DETECTORS_TABLE),
                 aberration=self._handle_reference(data[kw.ABERRATION_REFERENCE], kw.ABERRATIONS_TABLE),
             ))
@@ -644,9 +628,8 @@ class FITSReader(SystemReader):
                     source=source,
                     n_valid_subapertures=n_valid_subapertures,
                     centroiding_algorithm=other_data[kw.WAVEFRONT_SENSOR_SHACK_HARTMANN_CENTROIDING_ALGORITHM],
-                    centroid_gains=self._handle_reference(
-                        other_data[kw.WAVEFRONT_SENSOR_SHACK_HARTMANN_CENTROID_GAINS]),
-                    spot_fwhm=self._handle_reference(other_data[kw.WAVEFRONT_SENSOR_SHACK_HARTMANN_SPOT_FWHM])
+                    centroid_gains=self._handle_image(other_data[kw.WAVEFRONT_SENSOR_SHACK_HARTMANN_CENTROID_GAINS]),
+                    spot_fwhm=self._handle_image(other_data[kw.WAVEFRONT_SENSOR_SHACK_HARTMANN_SPOT_FWHM])
                 )
             elif t == kw.WAVEFRONT_SENSOR_TYPE_PYRAMID:
                 # Try to find uid in secondary table
@@ -669,16 +652,16 @@ class FITSReader(SystemReader):
                 warnings.warn(f"Skipped wavefront sensor '{uid}': unknown type '{t}'.")
                 continue
 
-            wfs.measurements = self._handle_reference(data[kw.WAVEFRONT_SENSOR_MEASUREMENTS])
-            wfs.ref_measurements = self._handle_reference(data[kw.WAVEFRONT_SENSOR_REF_MEASUREMENTS])
-            wfs.subaperture_mask = self._handle_reference(data[kw.WAVEFRONT_SENSOR_SUBAPERTURE_MASK])
+            wfs.measurements = self._handle_image(data[kw.WAVEFRONT_SENSOR_MEASUREMENTS])
+            wfs.ref_measurements = self._handle_image(data[kw.WAVEFRONT_SENSOR_REF_MEASUREMENTS])
+            wfs.subaperture_mask = self._handle_image(data[kw.WAVEFRONT_SENSOR_SUBAPERTURE_MASK])
             wfs.mask_offsets = [aotpy.Coordinates(x, y) for x, y in zip(data[kw.WAVEFRONT_SENSOR_MASK_X_OFFSETS],
                                                                         data[kw.WAVEFRONT_SENSOR_MASK_Y_OFFSETS])]
             wfs.subaperture_size = data[kw.WAVEFRONT_SENSOR_SUBAPERTURE_SIZE]
-            wfs.subaperture_intensities = self._handle_reference(data[kw.WAVEFRONT_SENSOR_SUBAPERTURE_INTENSITIES])
+            wfs.subaperture_intensities = self._handle_image(data[kw.WAVEFRONT_SENSOR_SUBAPERTURE_INTENSITIES])
             wfs.wavelength = data[kw.WAVEFRONT_SENSOR_WAVELENGTH]
-            wfs.optical_gain = self._handle_reference(data[kw.WAVEFRONT_SENSOR_OPTICAL_GAIN])
-            wfs.geometry = self._handle_reference(data[kw.GEOMETRY_REFERENCE], kw.GEOMETRY_TABLE)
+            wfs.optical_gain = self._handle_image(data[kw.WAVEFRONT_SENSOR_OPTICAL_GAIN])
+            wfs.transformation_matrix = self._handle_image(data[kw.TRANSFORMATION_MATRIX])
             wfs.detector = self._handle_reference(data[kw.DETECTOR_REFERENCE], kw.DETECTORS_TABLE)
             wfs.aberration = self._handle_reference(data[kw.ABERRATION_REFERENCE], kw.ABERRATIONS_TABLE)
             wfs.non_common_path_aberration = self._handle_reference(data[kw.NCPA_REFERENCE], kw.ABERRATIONS_TABLE)
@@ -722,7 +705,7 @@ class FITSReader(SystemReader):
                     actuator_coordinates=[aotpy.Coordinates(x, y) for x, y in
                                           zip(other_data[kw.WAVEFRONT_CORRECTOR_DM_ACTUATORS_X],
                                               other_data[kw.WAVEFRONT_CORRECTOR_DM_ACTUATORS_Y])],
-                    influence_function=self._handle_reference(other_data[kw.WAVEFRONT_CORRECTOR_DM_INFLUENCE_FUNCTION]),
+                    influence_function=self._handle_image(other_data[kw.WAVEFRONT_CORRECTOR_DM_INFLUENCE_FUNCTION]),
                     stroke=other_data[kw.WAVEFRONT_CORRECTOR_DM_STROKE]
                 )
             elif t == kw.WAVEFRONT_CORRECTOR_TYPE_TTM:
@@ -739,10 +722,10 @@ class FITSReader(SystemReader):
                 warnings.warn(f"Skipped wavefront corrector '{uid}': unknown type '{t}'.")
                 continue
 
-            cor.pupil_mask = self._handle_reference(data[kw.WAVEFRONT_CORRECTOR_PUPIL_MASK])
+            cor.pupil_mask = self._handle_image(data[kw.WAVEFRONT_CORRECTOR_PUPIL_MASK])
             cor.tfz_num = data[kw.WAVEFRONT_CORRECTOR_TFZ_NUM]
             cor.tfz_den = data[kw.WAVEFRONT_CORRECTOR_TFZ_DEN]
-            cor.geometry = self._handle_reference(data[kw.GEOMETRY_REFERENCE], kw.GEOMETRY_TABLE)
+            cor.transformation_matrix = self._handle_image(data[kw.TRANSFORMATION_MATRIX])
             cor.aberration = self._handle_reference(data[kw.ABERRATION_REFERENCE], kw.ABERRATIONS_TABLE)
 
             self._wfcs[uid] = [cor, True]  # wavefront corectors are always referenced by AOSystem
@@ -787,13 +770,15 @@ class FITSReader(SystemReader):
                     commanded_corrector=commanded,
                     input_sensor=self._handle_reference(other_data[kw.LOOPS_CONTROL_INPUT_SENSOR],
                                                         kw.WAVEFRONT_SENSORS_TABLE),
-                    control_matrix=self._handle_reference(other_data[kw.LOOPS_CONTROL_CONTROL_MATRIX]),
-                    measurements_to_modes=self._handle_reference(other_data[kw.LOOPS_CONTROL_MEASUREMENTS_TO_MODES]),
-                    modes_to_commands=self._handle_reference(other_data[kw.LOOPS_CONTROL_MODES_TO_COMMANDS]),
-                    interaction_matrix=self._handle_reference(other_data[kw.LOOPS_CONTROL_INTERACTION_MATRIX]),
-                    commands_to_modes=self._handle_reference(other_data[kw.LOOPS_CONTROL_COMMANDS_TO_MODES]),
-                    modes_to_measurements=self._handle_reference(other_data[kw.LOOPS_CONTROL_MODES_TO_MEASUREMENTS]),
-                    residual_commands=self._handle_reference(other_data[kw.LOOPS_CONTROL_RESIDUAL_COMMANDS])
+                    modes=self._handle_image(other_data[kw.LOOPS_CONTROL_MODES]),
+                    modal_coefficients=self._handle_image(other_data[kw.LOOPS_CONTROL_MODAL_COEFFICIENTS]),
+                    control_matrix=self._handle_image(other_data[kw.LOOPS_CONTROL_CONTROL_MATRIX]),
+                    measurements_to_modes=self._handle_image(other_data[kw.LOOPS_CONTROL_MEASUREMENTS_TO_MODES]),
+                    modes_to_commands=self._handle_image(other_data[kw.LOOPS_CONTROL_MODES_TO_COMMANDS]),
+                    interaction_matrix=self._handle_image(other_data[kw.LOOPS_CONTROL_INTERACTION_MATRIX]),
+                    commands_to_modes=self._handle_image(other_data[kw.LOOPS_CONTROL_COMMANDS_TO_MODES]),
+                    modes_to_measurements=self._handle_image(other_data[kw.LOOPS_CONTROL_MODES_TO_MEASUREMENTS]),
+                    residual_commands=self._handle_image(other_data[kw.LOOPS_CONTROL_RESIDUAL_COMMANDS])
                 )
             elif t == kw.LOOPS_TYPE_OFFLOAD:
                 # Try to find uid in secondary table
@@ -808,7 +793,7 @@ class FITSReader(SystemReader):
                     commanded_corrector=commanded,
                     input_corrector=self._handle_reference(other_data[kw.LOOPS_OFFLOAD_INPUT_CORRECTOR],
                                                            kw.WAVEFRONT_CORRECTORS_TABLE),
-                    offload_matrix=self._handle_reference(other_data[kw.LOOPS_OFFLOAD_OFFLOAD_MATRIX])
+                    offload_matrix=self._handle_image(other_data[kw.LOOPS_OFFLOAD_OFFLOAD_MATRIX])
                 )
             else:
                 warnings.warn(f"Skipped loop '{uid}': unknown type '{t}'.")
@@ -824,11 +809,11 @@ class FITSReader(SystemReader):
             else:
                 warnings.warn(f"Ignored unknown loop status '{status}'.")
                 loop.closed = None
-            loop.commands = self._handle_reference(data[kw.LOOPS_COMMANDS])
-            loop.ref_commands = self._handle_reference(data[kw.LOOPS_REF_COMMANDS])
+            loop.commands = self._handle_image(data[kw.LOOPS_COMMANDS])
+            loop.ref_commands = self._handle_image(data[kw.LOOPS_REF_COMMANDS])
             loop.framerate = data[kw.LOOPS_FRAMERATE]
             loop.delay = data[kw.LOOPS_DELAY]
-            loop.time_filter_num = self._handle_reference(data[kw.LOOPS_TIME_FILTER_NUM])
-            loop.time_filter_den = self._handle_reference(data[kw.LOOPS_TIME_FILTER_DEN])
+            loop.time_filter_num = self._handle_image(data[kw.LOOPS_TIME_FILTER_NUM])
+            loop.time_filter_den = self._handle_image(data[kw.LOOPS_TIME_FILTER_DEN])
 
             self._system.loops.append(loop)

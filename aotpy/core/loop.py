@@ -59,6 +59,15 @@ class ControlLoop(Loop):
 
     input_sensor: WavefrontSensor
 
+    modes: Image = None
+    """Set of :math:`m` different :math:`h \\times w` arrays, each representing the orthonormal basis of the
+    corresponding mode. (Dimensions :math:`m \\times h \\times w`, dimensionless quantity, using data type flt)"""
+
+    modal_coefficients: Image = None
+    """Sequence of coefficients of the modes to be corrected on the wavefront corrector. Each of the :math:`t` frames
+    contains the coefficients respective to each of the :math:`m` modes being corrected.
+    (Dimensions :math:`t \\times m`, in user defined units, using data type flt)"""
+
     control_matrix: Image = None
     """Linear relationship between the wavefront sensor measurements (:math:`d \\times s_v`) and the corrector commands 
     (:math:`a_v`). (Dimensions :math:`a_v \\times d \\times s_v`, in user defined units, using data type flt)"""

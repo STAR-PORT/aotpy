@@ -8,7 +8,6 @@ from .aberration import *
 from .ao_system import *
 from .atmosphere import *
 from .base import *
-from .geometry import *
 from .image import *
 from .loop import *
 from .optical_sensor import *

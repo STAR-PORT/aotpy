@@ -191,21 +191,6 @@ class FITSWriter(SystemWriter):
             self._images[image.name] = image
             return reference
 
-    def _handle_geometry(self, geo: aotpy.Geometry) -> str | None:
-        if geo is None:
-            return None
-        row = {
-            kw.REFERENCE_UID: geo.uid,
-            kw.TIME_REFERENCE: self._handle_time(geo.time),
-            kw.GEOMETRY_ROTATION: [i.rotation for i in geo.sequence],
-            kw.GEOMETRY_TRANSLATION_X: [i.translation.x for i in geo.sequence],
-            kw.GEOMETRY_TRANSLATION_Y: [i.translation.y for i in geo.sequence],
-            kw.GEOMETRY_MAGNIFICATION_X: [i.magnification.x for i in geo.sequence],
-            kw.GEOMETRY_MAGNIFICATION_Y: [i.magnification.y for i in geo.sequence]
-        }
-        self._add_to_table(kw.GEOMETRY_TABLE, geo, row)
-        return self._create_row_reference(geo.uid)
-
     def _handle_atmospheric_parameters(self, atm: aotpy.AtmosphericParameters) -> None:
         if atm is None:
             raise ValueError("'AOSystem.atmosphere_params' list cannot contain 'None' items.")
@@ -223,7 +208,7 @@ class FITSWriter(SystemWriter):
             kw.ATMOSPHERIC_PARAMETERS_LAYERS_L0: self._handle_image(atm.layers_l0),
             kw.ATMOSPHERIC_PARAMETERS_LAYERS_WIND_SPEED: self._handle_image(atm.layers_wind_speed),
             kw.ATMOSPHERIC_PARAMETERS_LAYERS_WIND_DIRECTION: self._handle_image(atm.layers_wind_direction),
-            kw.GEOMETRY_REFERENCE: self._handle_geometry(atm.geometry),
+            kw.TRANSFORMATION_MATRIX: self._handle_image(atm.transformation_matrix),
         }
         self._add_to_table(kw.ATMOSPHERIC_PARAMETERS_TABLE, atm, row)
 
@@ -295,7 +280,7 @@ class FITSWriter(SystemWriter):
             kw.TELESCOPE_SEGMENTS_SIZE: segments_size,
             kw.TELESCOPE_SEGMENTS_X: segments_x,
             kw.TELESCOPE_SEGMENTS_Y: segments_y,
-            kw.GEOMETRY_REFERENCE: self._handle_geometry(tel.geometry),
+            kw.TRANSFORMATION_MATRIX: self._handle_image(tel.transformation_matrix),
             kw.ABERRATION_REFERENCE: self._handle_aberration(tel.aberration)
         }
         if self._add_to_table(kw.TELESCOPES_TABLE, tel, row) and referenced and main:
@@ -378,7 +363,7 @@ class FITSWriter(SystemWriter):
             kw.DETECTOR_DYNAMIC_RANGE: det.dynamic_range,
             kw.DETECTOR_READOUT_RATE: det.readout_rate,
             kw.DETECTOR_FRAME_RATE: det.frame_rate,
-            kw.GEOMETRY_REFERENCE: self._handle_geometry(det.geometry)
+            kw.TRANSFORMATION_MATRIX: self._handle_image(det.transformation_matrix),
         }
         self._add_to_table(kw.DETECTORS_TABLE, det, row)
         return self._create_row_reference(det.uid)
@@ -391,7 +376,7 @@ class FITSWriter(SystemWriter):
             kw.REFERENCE_UID: cam.uid,
             kw.SCORING_CAMERA_PUPIL_MASK: self._handle_image(cam.pupil_mask),
             kw.SCORING_CAMERA_WAVELENGTH: cam.wavelength,
-            kw.GEOMETRY_REFERENCE: self._handle_geometry(cam.geometry),
+            kw.TRANSFORMATION_MATRIX: self._handle_image(cam.transformation_matrix),
             kw.DETECTOR_REFERENCE: self._handle_detector(cam.detector),
             kw.ABERRATION_REFERENCE: self._handle_aberration(cam.aberration)
         }
@@ -438,10 +423,10 @@ class FITSWriter(SystemWriter):
             kw.WAVEFRONT_SENSOR_SUBAPERTURE_INTENSITIES: self._handle_image(wfs.subaperture_intensities),
             kw.WAVEFRONT_SENSOR_WAVELENGTH: wfs.wavelength,
             kw.WAVEFRONT_SENSOR_OPTICAL_GAIN: self._handle_image(wfs.optical_gain),
-            kw.GEOMETRY_REFERENCE: self._handle_geometry(wfs.geometry),
+            kw.TRANSFORMATION_MATRIX: self._handle_image(wfs.transformation_matrix),
             kw.DETECTOR_REFERENCE: self._handle_detector(wfs.detector),
             kw.ABERRATION_REFERENCE: self._handle_aberration(wfs.aberration),
-            kw.NCPA_REFERENCE: self._handle_aberration(wfs.aberration)
+            kw.NCPA_REFERENCE: self._handle_aberration(wfs.non_common_path_aberration)
         }
         if self._add_to_table(kw.WAVEFRONT_SENSORS_TABLE, wfs, row) and referenced:
             raise ValueError(
@@ -478,7 +463,7 @@ class FITSWriter(SystemWriter):
             kw.WAVEFRONT_CORRECTOR_PUPIL_MASK: self._handle_image(cor.pupil_mask),
             kw.WAVEFRONT_CORRECTOR_TFZ_NUM: cor.tfz_num,
             kw.WAVEFRONT_CORRECTOR_TFZ_DEN: cor.tfz_den,
-            kw.GEOMETRY_REFERENCE: self._handle_geometry(cor.geometry),
+            kw.TRANSFORMATION_MATRIX: self._handle_image(cor.transformation_matrix),
             kw.ABERRATION_REFERENCE: self._handle_aberration(cor.aberration)
         }
         if self._add_to_table(kw.WAVEFRONT_CORRECTORS_TABLE, cor, row) and referenced:
@@ -495,6 +480,8 @@ class FITSWriter(SystemWriter):
             row = {
                 kw.REFERENCE_UID: loop.uid,
                 kw.LOOPS_CONTROL_INPUT_SENSOR: self._handle_wavefront_sensor(loop.input_sensor, True),
+                kw.LOOPS_CONTROL_MODES: self._handle_image(loop.modes),
+                kw.LOOPS_CONTROL_MODAL_COEFFICIENTS: self._handle_image(loop.modal_coefficients),
                 kw.LOOPS_CONTROL_CONTROL_MATRIX: self._handle_image(loop.control_matrix),
                 kw.LOOPS_CONTROL_MEASUREMENTS_TO_MODES: self._handle_image(loop.measurements_to_modes),
                 kw.LOOPS_CONTROL_MODES_TO_COMMANDS: self._handle_image(loop.modes_to_commands),
