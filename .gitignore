@@ -132,4 +132,4 @@ fabric.properties
 
 .idea/
 *.fits
-!data/**/*.fits
+!aotpy/data/**/*.fits
