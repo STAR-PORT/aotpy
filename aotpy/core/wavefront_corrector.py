@@ -2,7 +2,6 @@
 This module contains classes that describe different types of wavefront correctors in a system.
 """
 
-
 from dataclasses import dataclass, field
 
 from .aberration import Aberration

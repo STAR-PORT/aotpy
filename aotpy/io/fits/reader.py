@@ -2,7 +2,6 @@
 This module contains classes and functions that enable reading AOT FITS files.
 """
 
-
 import re
 import warnings
 from datetime import datetime

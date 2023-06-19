@@ -3,8 +3,8 @@ This subpackage contains modules and packages for handling AOT files using data 
 Currently only FITS is supported.
 """
 
-from .fits import *
 from .base import SystemReader, SystemWriter
+from .fits import *
 from .. import _AVAILABLE_WRITERS, _AVAILABLE_READERS
 
 # Add available writers/readers to their respective dictionaries

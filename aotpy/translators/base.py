@@ -18,6 +18,7 @@ class BaseTranslator(ABC):
         Arguments used to initialize the translator class.
 
     """
+
     @abstractmethod
     def __init__(self, *args) -> None:
         self.system: aotpy.AOSystem = aotpy.AOSystem()

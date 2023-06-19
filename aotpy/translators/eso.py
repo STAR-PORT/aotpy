@@ -15,11 +15,11 @@ import astropy.table
 import numpy as np
 from astropy.io import fits
 from astropy.time import Time
+
 try:
     from pyvo.dal import tap
 except (ImportError, ModuleNotFoundError):
     tap = None
-
 
 from aotpy.io.fits import FITSWriter
 from .base import BaseTranslator
@@ -32,6 +32,7 @@ class ESOTranslator(BaseTranslator):
 
     Translators are able to convert non-standard AO telemetry data files into an `AOSystem` object.
     """
+
     @abstractmethod
     def _get_eso_telescope_name(self) -> str:
         """
@@ -87,7 +88,7 @@ class ESOTranslator(BaseTranslator):
         """
         pass
 
-    def to_archive_ready_file(self, filename, **kwargs) -> None:
+    def to_archive_ready_file(self, filename: str, query_archive: bool = True, **kwargs) -> None:
         """
         Writes translated system into an AOT FITS file with the necessary metadata for ESO Archive.
 
@@ -97,49 +98,73 @@ class ESOTranslator(BaseTranslator):
         ----------
         filename
             Path to the file that will be written.
+        query_archive : default = True
+            Whether the ESO archive should be queried to find relevant metadata already in the archive.
         **kwargs
             Keyword arguments passed on as options to the file handling function.
 
         """
-        if tap is None:
-            raise ImportError("Querying the ESO archive requires the pyvo module.")
-        beg = Time(self.system.date_beginning, scale='utc')
         telescope = self._get_eso_telescope_name()
-
-        delta = timedelta(hours=1)
-        query = f"""SELECT TOP 1 ABS(mjd_obs - {beg.mjd}) as diff, *
-        FROM dbo.raw
-        WHERE telescope='{telescope}'
-        and mjd_obs between {(beg - delta).mjd} and {(beg + delta).mjd}
-        and not dp_type LIKE '%AOT%'
-        ORDER BY 1 ASC
-        """
-        res = tap.TAPService(ESO_TAP_OBS).search(query).to_table()
-        if not res:
-            raise ValueError(f"Could not find data from telescope '{telescope}' near mjd_obs {beg.mjd} at ESO Archive")
-        res = res[0]
         metadata = {
             'ORIGIN': 'ESO-PARANAL',
+            'TELESCOP': telescope.replace('%', ''),
             'DATE': datetime.now().isoformat(timespec='milliseconds'),
-            'TELESCOP': telescope,
-            'INSTRUME': res['instrument'],
             'OBJECT': 'AO-TELEM',
-            'RA': res['ra'],
-            'DEC': res['dec'],
-            'PI-COI': res['pi_coi'],
             'OBSERVER': 'I, Condor',
             'DATE-OBS': self.system.date_beginning.astimezone(timezone.utc).replace(tzinfo=None).isoformat(
                 timespec='milliseconds'),
             'MJD-OBS': Time(self.system.date_beginning, scale='utc').mjd,
             'MJD-END': Time(self.system.date_end, scale='utc').mjd,
             'EXPTIME': (self.system.date_end - self.system.date_beginning).total_seconds(),
-            'HIERARCH ESO OBS PROG ID': res['prog_id'],
             'HIERARCH ESO DPR CATG': 'CALIB',
             'HIERARCH ESO DPR TYPE': f'AO-TELEM,AOT,{self._get_eso_ao_name()}',
             'HIERARCH ESO DPR TECH': self.system.ao_mode,
-            'HIERARCH ESO INS MODE': res['ins_mode']
         }
-        # TODO tel_az, tel_alt,
+        if self.system.main_telescope.azimuth is not None:
+            metadata['HIERARCH ESO TEL AZ'] = self.system.main_telescope.azimuth
+        if self.system.main_telescope.elevation is not None:
+            metadata['HIERARCH ESO TEL ALT'] = self.system.main_telescope.elevation
+
+        if query_archive:
+            if tap is None:
+                raise ImportError("Querying the ESO archive requires the pyvo module."
+                                  "You can set the 'query_archive' option to False to skip querying the archive.")
+            beg = Time(self.system.date_beginning, scale='utc')
+
+            if '%' in telescope:
+                tel_comparator = " LIKE "
+            else:
+                tel_comparator = "="
+
+            delta = timedelta(hours=1)
+            query = f"""
+            SELECT TOP 1 ABS(mjd_obs - {beg.mjd}) as diff, *
+            FROM dbo.raw
+            WHERE mjd_obs between {(beg - delta).mjd} and {(beg + delta).mjd}
+                and telescope{tel_comparator}'{telescope}'
+                and not dp_type LIKE '%AOT%'
+            ORDER BY 1 ASC
+            """
+            res = tap.TAPService(ESO_TAP_OBS).search(query).to_table()
+            if res:
+                res = res[0]
+                metadata |= {
+                    'INSTRUME': res['instrument'],
+                    'RA': res['ra'],
+                    'DEC': res['dec'],
+                    # 'PI-COI': res['pi_coi'],
+                    # we do not store PI-COI because it is not needed and can cause issues with special chars
+                    'HIERARCH ESO OBS PROG ID': res['prog_id'],
+                    'HIERARCH ESO INS MODE': res['ins_mode'],
+                }
+                if 'HIERARCH ESO TEL AZ' not in metadata:
+                    metadata['HIERARCH ESO TEL AZ'] = res['tel_az']
+                if 'HIERARCH ESO TEL ALT' not in metadata:
+                    metadata['HIERARCH ESO TEL ALT'] = res['tel_alt']
+            else:
+                warnings.warn(f"Could not find data from telescope '{telescope}' near mjd_obs {beg.mjd} at the "
+                              f"ESO Archive")
+
         hdul = FITSWriter(self.system).get_hdus()
         hdr: fits.Header = hdul[0].header
         hdr.extend(metadata)
@@ -158,7 +183,8 @@ class ESOTranslator(BaseTranslator):
         beg = (self.system.date_beginning - delta).isoformat(timespec='milliseconds')
         end = (self.system.date_end + delta).isoformat(timespec='milliseconds')
 
-        query = f"""SELECT *
+        query = f"""
+        SELECT *
         FROM asm.meteo_paranal
         WHERE midpoint_date between '{beg}' and '{end}'
         AND valid=1
@@ -183,23 +209,23 @@ class ESOTranslator(BaseTranslator):
         return -(az - 180) % 360
 
     @staticmethod
-    def _get_pixel_data_from_table(pix_loop_frame: fits.FITS_rec) -> np.ndarray:
+    def _get_pixel_data_from_table(pix_frame: fits.FITS_rec) -> np.ndarray:
         """
         Get properly reshaped pixel data from FITS binary table data.
 
         Parameters
         ----------
-        pix_loop_frame
+        pix_frame
             Binary table data containing pixel image.
         """
-        sizes_x = pix_loop_frame['WindowSizeX']
-        sizes_y = pix_loop_frame['WindowSizeY']
+        sizes_x = pix_frame['WindowSizeX']
+        sizes_y = pix_frame['WindowSizeY']
         if np.any(sizes_x != sizes_x[0]) or np.any(sizes_y != sizes_y[0]):
             warnings.warn('Pixel window size seems to change over time.')
         sizes_x = sizes_x[0]
         sizes_y = sizes_y[0]
 
-        return pix_loop_frame['Pixels'][:, :sizes_x * sizes_y].reshape(-1, sizes_x, sizes_y)
+        return pix_frame['Pixels'][:, :sizes_x * sizes_y].reshape(-1, sizes_x, sizes_y)
 
     @staticmethod
     def _stack_slopes(data: np.ndarray, slope_axis: int) -> np.ndarray:

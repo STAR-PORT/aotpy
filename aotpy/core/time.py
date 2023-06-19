@@ -2,7 +2,6 @@
 This module contains a class for describing the passage of time related to data in the system.
 """
 
-
 from dataclasses import dataclass, field
 
 from .base import Referenceable

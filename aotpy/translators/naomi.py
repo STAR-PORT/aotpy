@@ -14,6 +14,7 @@ import aotpy
 from aotpy.io import image_from_file
 from .eso import ESOTranslator
 
+
 # TODO set image units
 
 
@@ -27,6 +28,7 @@ class NAOMITranslator(ESOTranslator):
     at_number : {1, 2, 3, 4}
         Number of the AT that produced the data.
     """
+
     def __init__(self, path: str, at_number: int):
         path = Path(path)
         self._at_number = at_number
@@ -40,7 +42,9 @@ class NAOMITranslator(ESOTranslator):
             uid=f'ESO VLT AT{at_number}',
             elevation=main_hdr['ESO TEL ALT'],
             azimuth=self._azimuth_conversion(main_hdr['ESO TEL AZ']),
-            parallactic=main_hdr['ESO TEL PRLTIC']
+            parallactic=main_hdr['ESO TEL PRLTIC'],
+            enclosing_diameter=1.82,
+            inscribed_diameter=1.82
         )
         naomi_data_path = importlib.resources.files('aotpy.data') / 'NAOMI'
         with importlib.resources.as_file(naomi_data_path / 'zernike_control_modes.fits') as p:
@@ -50,7 +54,7 @@ class NAOMITranslator(ESOTranslator):
         if main_hdr['ESO AOS CM MODES CONTROLLED'] != control_modes.data.shape[0]:
             warnings.warn("Keyword 'ESO AOS CM MODES CONTROLLED' does not match expected number of control modes.")
 
-        ngs = aotpy.NaturalGuideStar('NGS',
+        ngs = aotpy.NaturalGuideStar(uid='NGS',
                                      right_ascension=main_hdr['RA'],
                                      declination=main_hdr['DEC'])
 
@@ -146,7 +150,11 @@ class NAOMITranslator(ESOTranslator):
         self.system.atmosphere_params = [asm]
 
     def _get_eso_telescope_name(self) -> str:
-        return f"ESO-VLTI-A{self._at_number}"
+        # Allow for both:
+        #   ESO-VLTI-Amnop
+        #   ESO-VLTI-Uijkl-Amnop
+        # as long as mnop contains the correct number
+        return f"ESO-VLTI-%A%{self._at_number}%"
 
     def _get_eso_ao_name(self) -> str:
         return 'NAOMI'

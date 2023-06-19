@@ -79,11 +79,10 @@ class AOSystem:
         """
         ext = Path(filename).suffix[1:]
         try:
-            WriterClass = _AVAILABLE_WRITERS[ext.lower()]
+            _AVAILABLE_WRITERS[ext.lower()](self).write(filename, **kwargs)
         except KeyError:
             raise ValueError(f"No available writer for extension '{ext}'. "
                              f"Available extensions: {str(list(_AVAILABLE_WRITERS.keys()))[1:-1]}")
-        WriterClass(self).write(filename, **kwargs)
 
     @staticmethod
     def read_from_file(filename: str | os.PathLike, **kwargs) -> 'AOSystem':
@@ -99,8 +98,7 @@ class AOSystem:
         """
         ext = Path(filename).suffix[1:]
         try:
-            ReaderClass = _AVAILABLE_READERS[ext.lower()]
+            return _AVAILABLE_READERS[ext.lower()](filename, **kwargs).get_system()
         except KeyError:
             raise ValueError(f"No available reader for extension '{ext}'. "
                              f"Available extensions: {str(list(_AVAILABLE_READERS.keys()))[1:-1]}")
-        return ReaderClass(filename, **kwargs).get_system()

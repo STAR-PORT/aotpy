@@ -3,7 +3,6 @@ This module contains classes for describing telescopes in a system. These may be
 launch telescopes.
 """
 
-
 from dataclasses import dataclass, field
 
 from .aberration import Aberration
@@ -32,6 +31,7 @@ class Segments:
 
 class Monolithic(Segments):
     """Describes a monolithic pupil."""
+
     def __init__(self):
         super().__init__()  # Use default initialization values for Segments
 

@@ -7,4 +7,6 @@ The aotpy objects created by these translators can be handled as any other aotpy
 
 from .aof import AOFTranslator
 from .ciao import CIAOTranslator
+from .eris import ERISTranslator
 from .naomi import NAOMITranslator
+from .papyrus import PAPYRUSTranslator

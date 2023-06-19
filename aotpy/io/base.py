@@ -19,6 +19,7 @@ class SystemWriter(ABC):
         `AOSystem` to be written into a file.
 
     """
+
     @abstractmethod
     def __init__(self, system: aotpy.AOSystem) -> None:
         self._system = system
@@ -53,6 +54,7 @@ class SystemReader(ABC):
     **kwargs
         Keyword arguments passed on as options to the file handling function.
     """
+
     def __init__(self, filename: str | os.PathLike, *, extra_data: bool = False, **kwargs) -> None:
         self._filename = filename
         self._extra_data_flag = extra_data

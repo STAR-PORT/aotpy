@@ -3,6 +3,7 @@ This module contains a class for translating data produced by ESO's AOF system.
 """
 
 import importlib.resources
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from astropy.io import fits
 import aotpy
 from aotpy.io import image_from_file
 from .eso import ESOTranslator
+
 
 # TODO set image units
 
@@ -186,7 +188,11 @@ class AOFTranslator(ESOTranslator):
 
         # Find the indexes where the counter for pixels matches the counter for ngs
         # Assumes the frames for pixel are contained in the frames for ngs
-        pix_time_mask = np.searchsorted(ir_loop_frame['FrameCounter'], pix_loop_frame['FrameCounter'])
+        ir_fc = ir_loop_frame['FrameCounter']
+        pix_fc = pix_loop_frame['FrameCounter']
+        if pix_fc[0] < ir_fc[0] or pix_fc[-1] > ir_fc[-1]:
+            warnings.warn('Pixel frame counter not contained in IR frame counter, pixel time data may be incorrect.')
+        pix_time_mask = np.searchsorted(ir_fc, pix_fc)
         pix_timestamps = ngs_timestamps[pix_time_mask]
         if np.all(pix_timestamps == 0):
             # The file has no timestamps

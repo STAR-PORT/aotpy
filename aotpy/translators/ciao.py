@@ -12,6 +12,7 @@ from astropy.io import fits
 import aotpy
 from .eso import ESOTranslator
 
+
 # TODO set image units
 
 
@@ -25,6 +26,7 @@ class CIAOTranslator(ESOTranslator):
     at_number : {1, 2, 3, 4}
         Number of the AT that produced the data.
     """
+
     def __init__(self, path: str, at_number: int):
         path = Path(path)
         self._at_number = at_number
@@ -148,7 +150,11 @@ class CIAOTranslator(ESOTranslator):
         self.system.atmosphere_params = [asm, aos]
 
     def _get_eso_telescope_name(self) -> str:
-        return f"ESO-VLTI-A{self._at_number}"
+        # Allow for both:
+        #   ESO-VLTI-Amnop
+        #   ESO-VLTI-Uijkl-Amnop
+        # as long as mnop contains the correct number
+        return f"ESO-VLTI-%A%{self._at_number}%"
 
     def _get_eso_ao_name(self) -> str:
         return 'CIAO'

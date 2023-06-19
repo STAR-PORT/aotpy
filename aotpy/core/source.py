@@ -48,14 +48,18 @@ class NaturalGuideStar(Source):
 
 
 @dataclass(kw_only=True)
-class _LaserGuideStar(Source):
-    """Contains data regarding a laser guide star being observed by the system."""
+class LaserGuideStar(Source):
+    """Abstract class that contains data regarding a laser guide star being observed by the system."""
 
     laser_launch_telescope: LaserLaunchTelescope = None
 
+    def __post_init__(self):
+        if self.__class__ == LaserGuideStar:
+            raise TypeError("Cannot instantiate abstract class.")
+
 
 @dataclass(kw_only=True)
-class SodiumLaserGuideStar(_LaserGuideStar):
+class SodiumLaserGuideStar(LaserGuideStar):
     """Contains data regarding a sodium laser guide star being observed by the system."""
 
     height: float = None
@@ -71,7 +75,7 @@ class SodiumLaserGuideStar(_LaserGuideStar):
 
 
 @dataclass(kw_only=True)
-class RayleighLaserGuideStar(_LaserGuideStar):
+class RayleighLaserGuideStar(LaserGuideStar):
     """Contains data regarding a Rayleigh laser guide star being observed by the system."""
 
     distance: float = None

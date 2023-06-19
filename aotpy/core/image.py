@@ -2,7 +2,7 @@
 This module contains classes that define multidimensional data in AOT and their respective metadata.
 """
 
-from dataclasses import dataclass, field, KW_ONLY
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np

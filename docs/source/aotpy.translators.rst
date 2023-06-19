@@ -52,6 +52,14 @@ aotpy.translators.naomi module
    :undoc-members:
    :show-inheritance:
 
+aotpy.translators.papyrus module
+--------------------------------
+
+.. automodule:: aotpy.translators.papyrus
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

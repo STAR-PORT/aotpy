@@ -88,7 +88,7 @@ class FITSURLImage(_FITSExternalImage):
         return self.url == other.url and self.index == other.index and self.time == other.time
 
 
-def image_from_file(path: str | os.PathLike, index: int = None, **kwargs) -> aotpy.Image:
+def image_from_file(path: str | os.PathLike, index: int = None, *, name: str = None, **kwargs) -> aotpy.Image:
     """
     Get `Image` from specified path or URL.
 
@@ -98,16 +98,20 @@ def image_from_file(path: str | os.PathLike, index: int = None, **kwargs) -> aot
         Path/URL to FITS file that contains multidimensional data.
     index: int, optional
         Index of the HDU that contains the image data. If omitted, the first HDU containing image data is assumed.
+    name: str, optional
+        Name of the Image. If None, the name is the same as in the file.
     **kwargs
         Keyword arguments passed on as options to the file handling function.
     """
-    name, data, unit, _time, metadata = _get_image_fields_from_file(path, index, **kwargs)
+    _name, data, unit, _time, metadata = _get_image_fields_from_file(path, index, **kwargs)
+    if name is None:
+        name = _name
     image = aotpy.Image(name=name, data=data, unit=unit, metadata=metadata)
     image._time = _time
     return image
 
 
-def image_from_hdus(hdus: fits.HDUList, index: int = None) -> aotpy.Image:
+def image_from_hdus(hdus: fits.HDUList, index: int = None, *, name: str = None) -> aotpy.Image:
     """
     Get `Image` from specified path or URL.
 
@@ -117,23 +121,31 @@ def image_from_hdus(hdus: fits.HDUList, index: int = None) -> aotpy.Image:
         List of HDUs from which `Image` is to be extracted.
     index: int, optional
         Index of the HDU that contains the image data. If omitted, the first HDU containing image data is assumed.
+    name: str, optional
+        Name of the Image. If None, the name is the same as in the HDU.
     """
-    name, data, unit, _time, metadata = _get_image_fields_from_hdus(hdus, index)
+    _name, data, unit, _time, metadata = _get_image_fields_from_hdus(hdus, index)
+    if name is None:
+        name = _name
     image = aotpy.Image(name=name, data=data, unit=unit, metadata=metadata)
     image._time = _time
     return image
 
 
-def image_from_hdu(hdu: fits.ImageHDU) -> aotpy.Image:
+def image_from_hdu(hdu: fits.ImageHDU, *, name: str = None) -> aotpy.Image:
     """
     Get `Image` from specified HDU.
 
     Parameters
     ----------
     hdu
-        HDU from which `Image` is to be extracted..
+        HDU from which `Image` is to be extracted.
+    name: str, optional
+        Name of the Image. If None, the name is the same as in the HDU.
     """
-    name, data, unit, _time, metadata = _get_image_fields_from_hdu(hdu)
+    _name, data, unit, _time, metadata = _get_image_fields_from_hdu(hdu)
+    if name is None:
+        name = _name
     image = aotpy.Image(name=name, data=data, unit=unit, metadata=metadata)
     image._time = _time
     return image

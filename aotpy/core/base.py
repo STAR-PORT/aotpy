@@ -19,4 +19,3 @@ class Referenceable:
     def __post_init__(self):
         if self.__class__ == Referenceable:
             raise TypeError("Cannot instantiate abstract class.")
-
