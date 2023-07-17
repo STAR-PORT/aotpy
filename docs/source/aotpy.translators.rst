@@ -4,14 +4,6 @@ aotpy.translators package
 Submodules
 ----------
 
-aotpy.translators.aof module
-----------------------------
-
-.. automodule:: aotpy.translators.aof
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 aotpy.translators.base module
 -----------------------------
 
@@ -40,6 +32,14 @@ aotpy.translators.eso module
 ----------------------------
 
 .. automodule:: aotpy.translators.eso
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+aotpy.translators.galacsi module
+--------------------------------
+
+.. automodule:: aotpy.translators.galacsi
    :members:
    :undoc-members:
    :show-inheritance:
