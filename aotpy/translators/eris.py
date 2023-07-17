@@ -1,5 +1,5 @@
 """
-This module contains a class for translating data produced by ESO's AOF system.
+This module contains a class for translating data produced by ESO's ERIS system.
 """
 
 import importlib.resources
@@ -29,7 +29,7 @@ class ERISTranslator(ESOTranslator):
 
     def __init__(self, path):
         self._path = Path(path)
-        self.system = aotpy.AOSystem()
+        self.system = aotpy.AOSystem(name='ERIS AO')
         self.system.main_telescope = aotpy.MainTelescope(
             uid='ESO VLT UT4',
             enclosing_diameter=8.2,
@@ -362,4 +362,7 @@ class ERISTranslator(ESOTranslator):
         return 'ESO-VLT-U4'
 
     def _get_eso_ao_name(self) -> str:
-        return 'ERIS'
+        return 'ERIAO'
+
+    def _get_run_id(self) -> str:
+        return '60.A-9278(E)'

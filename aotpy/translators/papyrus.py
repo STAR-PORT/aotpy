@@ -23,7 +23,7 @@ class PAPYRUSTranslator(BaseTranslator):
             raise ImportError("Translating PAPYRUS data requires the scipy module.")
         data = loadmat(file, simplify_cells=True)['data']
 
-        self.system = aotpy.AOSystem(ao_mode='SCAO')
+        self.system = aotpy.AOSystem(ao_mode='SCAO', name='PAPYRUS')
 
         self.system.sources = [aotpy.NaturalGuideStar(uid=data['source'])]
 

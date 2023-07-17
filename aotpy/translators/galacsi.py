@@ -1,5 +1,5 @@
 """
-This module contains a class for translating data produced by ESO's AOF system.
+This module contains a class for translating data produced by ESO's GALACSI system.
 """
 
 import importlib.resources
@@ -18,8 +18,8 @@ from .eso import ESOTranslator
 # TODO set image units
 
 
-class AOFTranslator(ESOTranslator):
-    """Contains functions for translating telemetry data produced by ESO's AOF system.
+class GALACSITranslator(ESOTranslator):
+    """Contains functions for translating telemetry data produced by ESO's GALACSI system.
 
     Parameters
     ----------
@@ -32,7 +32,7 @@ class AOFTranslator(ESOTranslator):
     """
 
     def __init__(self, path_lgs: str, path_ir: str, path_pix: str):
-        self.system = aotpy.AOSystem(ao_mode='LTAO')
+        self.system = aotpy.AOSystem(ao_mode='LTAO', name='GALACSI')
         self.system.main_telescope = aotpy.MainTelescope(
             uid='ESO VLT UT4',
             enclosing_diameter=8.2,
@@ -63,7 +63,7 @@ class AOFTranslator(ESOTranslator):
         lgs_time = aotpy.Time('LGS Loop Time', timestamps=lgs_timestamps.tolist(),
                               frame_numbers=lgs_frame_numbers.tolist())
 
-        aof_data_path = importlib.resources.files('aotpy.data') / 'AOF'
+        aof_data_path = importlib.resources.files('aotpy.data') / 'GALACSI'
         with importlib.resources.as_file(aof_data_path / 'subap.fits') as p:
             subaperture_mask = image_from_file(p)
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)
@@ -230,4 +230,7 @@ class AOFTranslator(ESOTranslator):
         return 'ESO-VLT-U4'
 
     def _get_eso_ao_name(self) -> str:
-        return 'AOF'
+        return 'GALACSI'
+
+    def _get_run_id(self) -> str:
+        return '60.A-9278(B)'

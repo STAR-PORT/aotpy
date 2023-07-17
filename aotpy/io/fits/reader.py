@@ -11,7 +11,7 @@ from astropy.io import fits
 
 import aotpy
 from . import _keywords as kw
-from .utils import FITSURLImage, FITSFileImage, image_from_hdu, keyword_is_relevant
+from .utils import FITSURLImage, FITSFileImage, image_from_hdu, keyword_is_relevant, metadatum_from_card
 from ..base import SystemReader
 
 _reference_pattern = re.compile(r'([^<]+)<(.+)>(\d+)?')
@@ -99,7 +99,6 @@ class FITSReader(SystemReader):
             kw.WAVEFRONT_CORRECTORS_TABLE: self._wfcs
         }
 
-        self._extra_header: list[fits.Card] = []
         self._extra_hdus: fits.HDUList = fits.HDUList()
         self._extra_columns: dict[str, list[fits.Column]] = {}
         self._extra_objects: list[aotpy.Referenceable] = []
@@ -161,7 +160,7 @@ class FITSReader(SystemReader):
             self._handle_loops(hdus)
 
             self._check_usage()
-            aux = [self._extra_header, self._extra_hdus, self._extra_columns, self._extra_objects]
+            aux = [self._extra_hdus, self._extra_columns, self._extra_objects]
             extra = aux if [x for x in aux if x] else None  # extra is None if everything is empty
             return self._system, extra
 
@@ -209,6 +208,11 @@ class FITSReader(SystemReader):
             pass
 
         try:
+            name = self._primary_header[kw.AOT_SYSTEM_NAME]
+        except KeyError:
+            name = None
+
+        try:
             strehl_ratio = self._primary_header[kw.AOT_STREHL_RATIO]
         except KeyError:
             strehl_ratio = None
@@ -223,15 +227,13 @@ class FITSReader(SystemReader):
         except KeyError:
             config = None
 
+        metadata = []
         for card in self._primary_header.cards:
             if card.keyword not in kw.AOT_HEADER_SET and keyword_is_relevant(card.keyword):
-                self._extra_header.append(card)
-        if self._extra_header and not self._extra_data_flag:
-            warnings.warn(f"""Header contains non-AOT keywords that were ignored: """
-                          f"""{', '.join([f"'{x.keyword}'" for x in self._extra_header])}""")
+                metadata.append(metadatum_from_card(card))
 
-        return aotpy.AOSystem(ao_mode=ao_mode, date_beginning=beg, date_end=end, strehl_ratio=strehl_ratio,
-                              temporal_error=temporal_error, config=config)
+        return aotpy.AOSystem(ao_mode=ao_mode, date_beginning=beg, date_end=end, name=name, strehl_ratio=strehl_ratio,
+                              temporal_error=temporal_error, config=config, metadata=metadata)
 
     def _check_bintable(self, hdus: fits.HDUList, table_name: str):
         fields = kw.TABLE_FIELDS[table_name]

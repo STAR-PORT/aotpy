@@ -37,6 +37,7 @@ class CIAOTranslator(ESOTranslator):
 
         self.system = aotpy.AOSystem(
             ao_mode='SCAO',
+            name='CIAO',
             strehl_ratio=main_hdr['ESO AOS ATM SR'],
             temporal_error=main_hdr['ESO AOS ATM TERR']
         )
@@ -158,3 +159,6 @@ class CIAOTranslator(ESOTranslator):
 
     def _get_eso_ao_name(self) -> str:
         return 'CIAO'
+
+    def _get_run_id(self) -> str:
+        return '60.A-9278(C)'
