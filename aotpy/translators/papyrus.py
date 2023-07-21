@@ -29,16 +29,7 @@ class PAPYRUSTranslator(BaseTranslator):
  
         ############ common fields between SH and PYWFS telemetry ###########################################
         
-        self.system = aotpy.AOSystem(ao_mode='SCAO', name='PAPYRUS')
-        
-        dateAndTime = data['recordTime']
-        self.system.date_end = datetime.datetime(year=int(dateAndTime[0:4]),
-                                                 month=int(dateAndTime[5:7]),
-                                                 day=int(dateAndTime[8:10]),
-                                                 hour=int(dateAndTime[11:13]),
-                                                 minute=int(dateAndTime[14:16]),
-                                                 second=int(dateAndTime[17:19]))
-
+        self.system = aotpy.AOSystem(ao_mode='SCAO')
 
         papyrus_data_path = importlib.resources.files('aotpy.data') / 'PAPYRUS'
         with importlib.resources.as_file(papyrus_data_path / 'T152_pupil.fits') as p:
@@ -59,11 +50,15 @@ class PAPYRUSTranslator(BaseTranslator):
         self.system.wavefront_correctors.append(dm)
         
         frame_number_measurements = np.array(data['wfsSlopesMetaData']['frameid'], dtype=float).tolist() # read timestamps
-        time_stamp_measurments = np.array(data['wfsSlopesMetaData']['timestamp'], dtype=float).tolist()
+        time_stamp_measurments = (np.array(data['wfsSlopesMetaData']['timestamp'], dtype=float)/1e9).tolist()
         frame_number_pixel_intensities = np.array(data['wfsImagesMetaData']['frameid'], dtype=float).tolist()
-        time_stamp_pixel_intensities = np.array(data['wfsImagesMetaData']['timestamp'], dtype=float).tolist()
+        time_stamp_pixel_intensities = (np.array(data['wfsImagesMetaData']['timestamp'], dtype=float)/1e9).tolist()
         frame_number_commands = np.array(data['wfcCommandMetaData']['frameid'], dtype=float).tolist()
-        time_stamp_commands = np.array(data['wfcCommandMetaData']['timestamp'], dtype=float).tolist()
+        time_stamp_commands = (np.array(data['wfcCommandMetaData']['timestamp'], dtype=float)/1e9).tolist()
+        
+        # extract aquisition date from time stamps
+        self.system.date_beginning = datetime.datetime.fromtimestamp(time_stamp_commands[0])
+        self.system.date_end = datetime.datetime.fromtimestamp(time_stamp_commands[-1])
         
         time_measurements = aotpy.Time(uid='measurements timer',
                                       timestamps=time_stamp_measurments,
@@ -103,17 +98,17 @@ class PAPYRUSTranslator(BaseTranslator):
             sh = aotpy.ShackHartmann(uid=data['wfsUid'],
                                      source=self.system.sources[0],
                                      n_valid_subapertures=data['wfsSlopes']['mask'].sum(),
-                                     measurements=aotpy.Image(name="papyrusShSlopes", 
+                                     measurements=aotpy.Image(name="papyrus Sh Slopes", 
                                                               data=measurements,
                                                               time=time_measurements),
                                      subaperture_mask=aotpy.Image('SH subaperture mask', subaperture_mask))
         
             dark = data['detector']['dark']
-            detector = aotpy.Detector(uid='cblueOne',
+            detector = aotpy.Detector(uid='cblue One',
                                       readout_noise=3,
-                                      pixel_intensities=aotpy.Image(name="cblueFrames", 
+                                      pixel_intensities=aotpy.Image(name="cblue Frames", 
                                                                     data=np.moveaxis(data['wfsImages'], -1, 0),
-                                                                    unit='CblueOne ADU',
+                                                                    unit='Cblue One ADU',
                                                                     time=time_pixel_intensities),
                                       #frame_rate=float(data['detector']['frameRate']),
                                       integration_time=data['detector']['exposureTime'],
@@ -151,12 +146,12 @@ class PAPYRUSTranslator(BaseTranslator):
                 uid=data['uid'],
                 commanded_corrector=dm,
                 input_sensor=sh,
-                commands=aotpy.Image(name='papyrusDmCommands', 
+                commands=aotpy.Image(name='papyrus Dm Commands', 
                                      data=np.transpose(data['wfcCommand']['values']), 
                                      unit=data['wfcCommand']['unit'],
                                      time=time_commands),
-                interaction_matrix=aotpy.Image("papyrusInteractionMatrix", interaction_matrix),
-                control_matrix=aotpy.Image("papyrusControlMatrix", control_matrix),
+                interaction_matrix=aotpy.Image("papyrus Interaction Matrix", interaction_matrix),
+                control_matrix=aotpy.Image("papyrus Control Matrix", control_matrix),
                 modes_to_commands=aotpy.Image("M2C", modes_to_commands),
                 modal_coefficients=aotpy.Image('loop modal gains', modal_coefficients),
                 closed=closed,
@@ -166,11 +161,9 @@ class PAPYRUSTranslator(BaseTranslator):
                         
         else:       # run pyramid telemetry translator script
         
-            self.system.sources = [aotpy.NaturalGuideStar(uid='noFieldSourceInPywfsTelemetryYet')]
-        
             self.system.config = 'WFS : Pyramid'
             
-            self.system.sources = [aotpy.NaturalGuideStar(uid='no mention of the name of the source in pyramid telemetry')]
+            self.system.sources = [aotpy.NaturalGuideStar(uid='ngs')]
             
             slope_x = data['wfsSlopes']['sx']
             slope_y = data['wfsSlopes']['sy']
@@ -235,9 +228,9 @@ class PAPYRUSTranslator(BaseTranslator):
                 uid=data['uid'],
                 commanded_corrector=dm,
                 input_sensor=pyramid,
-                commands=aotpy.Image('papyrusDmCommands', np.transpose(data['wfcCommand']['values'])),
-                interaction_matrix=aotpy.Image("papyrusInteractionMatrix", interaction_matrix),
-                control_matrix=aotpy.Image("papyrusControlMatrix", control_matrix),
+                commands=aotpy.Image('papyrus Dm Commands', np.transpose(data['wfcCommand']['values'])),
+                interaction_matrix=aotpy.Image("papyrus Interaction Matrix", interaction_matrix),
+                control_matrix=aotpy.Image("papyrus Control Matrix", control_matrix),
                 modes_to_commands=aotpy.Image("M2C", modes_to_commands),
                 modal_coefficients=aotpy.Image('loop modal gains', modal_coefficients),
                 closed=closed,
