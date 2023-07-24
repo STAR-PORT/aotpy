@@ -207,7 +207,7 @@ def metadatum_from_card(card: fits.Card):
     card
         `Card` to convert to `Metadatum`.
     """
-    return aotpy.Metadatum(card.keyword, card.value, card.comment)
+    return aotpy.Metadatum(card.keyword, card.value, card.comment if card.comment != '' else None)
 
 
 def metadata_from_hdu(hdu: fits.ImageHDU) -> list[aotpy.Metadatum]:

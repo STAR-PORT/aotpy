@@ -7,26 +7,10 @@ from typing import Any
 
 import numpy as np
 
+from .base import Metadatum
 from .time import Time
 
-__all__ = ['Image', 'Metadatum']
-
-
-@dataclass
-class Metadatum:
-    """Contains a set of key, value and (optionally) comment which describe the Image data in some aspect."""
-    key: str
-    "Identifier of the value."
-
-    value: Any
-    "Information that describes the Image data."
-
-    comment: str = None
-    "Optional description of the metadatum."
-
-    def to_tuple(self) -> tuple:
-        """ Return the `Metadatum` object expressed as a tuple (key, value, comment)."""
-        return self.key, self.value, self.comment
+__all__ = ['Image']
 
 
 @dataclass

@@ -37,7 +37,7 @@ class NAOMITranslator(ESOTranslator):
             main_hdr = hdus[0].header
             main_loop_frame: fits.FITS_rec = hdus['LoopFrame'].data
 
-        self.system = aotpy.AOSystem(ao_mode='SCAO')
+        self.system = aotpy.AOSystem(ao_mode='SCAO', name='NAOMI')
         self.system.main_telescope = aotpy.MainTelescope(
             uid=f'ESO VLT AT{at_number}',
             elevation=main_hdr['ESO TEL ALT'],
@@ -158,3 +158,6 @@ class NAOMITranslator(ESOTranslator):
 
     def _get_eso_ao_name(self) -> str:
         return 'NAOMI'
+
+    def _get_run_id(self) -> str:
+        return '60.A-9278(D)'

@@ -156,7 +156,8 @@ class FITSWriter(SystemWriter):
     def _handle_time(self, time: aotpy.Time) -> str | None:
         if time is None:
             return None
-        if time.timestamps and time.frame_numbers and len(time.timestamps) != len(time.frame_numbers):
+        if time.timestamps is not None and time.frame_numbers is not None \
+                and len(time.timestamps) != len(time.frame_numbers):
             raise ValueError(f"Error in Time '{time.uid}': If both 'timestamps' and 'frame_numbers' are non-null, they"
                              f"must have the same length.")
         row = {
@@ -517,26 +518,29 @@ class FITSWriter(SystemWriter):
         self._add_to_table(kw.LOOPS_TABLE, loop, row)
 
     def _create_primary_hdu(self) -> fits.PrimaryHDU:
-        cards = {
-            kw.AOT_VERSION: kw.CURRENT_AOT_VERSION,
-            kw.AOT_TIMESYS: kw.AOT_TIMESYS_UTC,
-        }
+        hdr = fits.Header([(f'HIERARCH {md.key}' if len(md.key) > 8 else md.key,
+                            md.value,
+                            md.comment) for md in self._system.metadata])
+        hdr[kw.AOT_VERSION] = kw.CURRENT_AOT_VERSION
+        hdr[kw.AOT_TIMESYS] = kw.AOT_TIMESYS_UTC
 
         if self._system.ao_mode not in kw.AOT_AO_MODE_SET:
             raise ValueError(f"'AOSystem.ao_mode' must be one of: {str(kw.AOT_AO_MODE_SET)[1:-1]}")
-        cards[kw.AOT_AO_MODE] = self._system.ao_mode
+        hdr[kw.AOT_AO_MODE] = self._system.ao_mode
 
-        cards[kw.AOT_DATE_BEG] = datetime_to_iso(self._system.date_beginning)
-        cards[kw.AOT_DATE_END] = datetime_to_iso(self._system.date_end)
+        hdr[kw.AOT_DATE_BEG] = datetime_to_iso(self._system.date_beginning)
+        hdr[kw.AOT_DATE_END] = datetime_to_iso(self._system.date_end)
 
+        if self._system.name is not None:
+            hdr[kw.AOT_SYSTEM_NAME] = self._system.name
         if self._system.strehl_ratio is not None:
-            cards[kw.AOT_STREHL_RATIO] = self._system.strehl_ratio
+            hdr[kw.AOT_STREHL_RATIO] = self._system.strehl_ratio
         if self._system.temporal_error is not None:
-            cards[kw.AOT_TEMPORAL_ERROR] = self._system.temporal_error
+            hdr[kw.AOT_TEMPORAL_ERROR] = self._system.temporal_error
         if self._system.config is not None:
-            cards[kw.AOT_CONFIG] = self._system.config
+            hdr[kw.AOT_CONFIG] = self._system.config
 
-        return fits.PrimaryHDU(header=fits.Header(cards))
+        return fits.PrimaryHDU(header=hdr)
 
     def _create_bintable_hdus(self) -> list[fits.BinTableHDU]:
         hdus = []

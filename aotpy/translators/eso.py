@@ -21,7 +21,7 @@ try:
 except (ImportError, ModuleNotFoundError):
     tap = None
 
-from aotpy.io.fits import FITSWriter
+from ..core.base import Metadatum
 from .base import BaseTranslator
 
 ESO_TAP_OBS = "https://archive.eso.org/tap_obs"
@@ -84,29 +84,31 @@ class ESOTranslator(BaseTranslator):
     @abstractmethod
     def _get_eso_ao_name(self) -> str:
         """
-        Get abbreviation of the adaptive optics system's name (e.g. 'AOF', 'NAOMI', 'CIAO', ...).
+        Get abbreviation of the adaptive optics system's name, as defined by ESO.
         """
         pass
 
-    def to_archive_ready_file(self, filename: str, query_archive: bool = True, **kwargs) -> None:
+    @abstractmethod
+    def _get_run_id(self) -> str:
         """
-        Writes translated system into an AOT FITS file with the necessary metadata for ESO Archive.
+        Get the run ID (prog ID) that refers to the data, as defined by ESO.
+        """
+        pass
 
-        Requires pyvo.
+    def add_archive_metadata(self, query_archive: bool = False) -> None:
+        """
+        Adds necessary metadata for ESO Archive to AOSystem.
 
         Parameters
         ----------
-        filename
-            Path to the file that will be written.
-        query_archive : default = True
-            Whether the ESO archive should be queried to find relevant metadata already in the archive.
-        **kwargs
-            Keyword arguments passed on as options to the file handling function.
-
+        query_archive : default = False
+            Whether the ESO archive should be queried to find relevant metadata already in the archive. Requires pyvo.
         """
         telescope = self._get_eso_telescope_name()
         metadata = {
             'ORIGIN': 'ESO-PARANAL',
+            'INSTRUME': self._get_eso_ao_name(),
+            'HIERARCH ESO OBS PROG ID': self._get_run_id(),
             'TELESCOP': telescope.replace('%', ''),
             'DATE': datetime.now().isoformat(timespec='milliseconds'),
             'OBJECT': 'AO-TELEM',
@@ -164,11 +166,7 @@ class ESOTranslator(BaseTranslator):
             else:
                 warnings.warn(f"Could not find data from telescope '{telescope}' near mjd_obs {beg.mjd} at the "
                               f"ESO Archive")
-
-        hdul = FITSWriter(self.system).get_hdus()
-        hdr: fits.Header = hdul[0].header
-        hdr.extend(metadata)
-        hdul.writeto(filename, **kwargs)
+        self.system.metadata.extend([Metadatum(k, v) for k, v in metadata.items()])
 
     def get_atmospheric_parameters_from_archive(self) -> astropy.table.Table:
         """

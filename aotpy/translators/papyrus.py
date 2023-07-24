@@ -29,7 +29,7 @@ class PAPYRUSTranslator(BaseTranslator):
 
         # common fields between SH and PYWFS telemetry
 
-        self.system = aotpy.AOSystem(ao_mode='SCAO')
+        self.system = aotpy.AOSystem(ao_mode='SCAO', name='PAPYRUS')
 
         papyrus_data_path = importlib.resources.files('aotpy.data') / 'PAPYRUS'
         with importlib.resources.as_file(papyrus_data_path / 'T152_pupil.fits') as p:

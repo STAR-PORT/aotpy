@@ -5,7 +5,7 @@ objects.
 The aotpy objects created by these translators can be handled as any other aotpy object regardless of origin.
 """
 
-from .aof import AOFTranslator
+from .galacsi import GALACSITranslator
 from .ciao import CIAOTranslator
 from .eris import ERISTranslator
 from .naomi import NAOMITranslator
