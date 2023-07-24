@@ -190,6 +190,7 @@ def _get_image_fields_from_hdu(hdu) -> tuple[str, np.ndarray, str, str, list[aot
     unit = None
     if (md := next((x for x in metadata if x.key == kw.IMAGE_UNIT), None)) is not None:
         unit = md.value
+        metadata.remove(md)
 
     _time = None
     if (md := next((x for x in metadata if x.key == kw.TIME_REFERENCE), None)) is not None:
