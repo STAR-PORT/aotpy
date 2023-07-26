@@ -1,3 +1,6 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8187230.svg)](https://doi.org/10.5281/zenodo.8187230)
+
+
 # aotpy
 Helper Python package for handling Adaptive Optics Telemetry (AOT) standard files.
 Basic [documentation available](https://aotpy.readthedocs.io/en/latest/).
