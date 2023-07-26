@@ -308,7 +308,7 @@ class ERISTranslator(ESOTranslator):
 
         eris_data_path = importlib.resources.files('aotpy.data') / 'ERIS'
         with importlib.resources.as_file(eris_data_path / 'ho_subap.fits') as p:
-            subaperture_mask = image_from_file(p, name='LO WFS SUBAPERTURE MASK')
+            subaperture_mask = image_from_file(p, name='HO WFS SUBAPERTURE MASK')
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)
 
         reference = self._stack_slopes(fits.getdata(self._path / 'HOAcq.DET1.REFSLP_WITH_OFFSETS.fits'),
@@ -366,3 +366,6 @@ class ERISTranslator(ESOTranslator):
 
     def _get_run_id(self) -> str:
         return '60.A-9278(E)'
+
+    def _get_chip_id(self) -> str:
+        return f'ERIAO'

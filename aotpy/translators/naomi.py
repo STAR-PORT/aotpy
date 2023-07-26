@@ -161,3 +161,6 @@ class NAOMITranslator(ESOTranslator):
 
     def _get_run_id(self) -> str:
         return '60.A-9278(D)'
+
+    def _get_chip_id(self) -> str:
+        return f'NAOMI{self._at_number}'

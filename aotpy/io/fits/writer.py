@@ -156,9 +156,8 @@ class FITSWriter(SystemWriter):
     def _handle_time(self, time: aotpy.Time) -> str | None:
         if time is None:
             return None
-        if time.timestamps is not None and time.frame_numbers is not None \
-                and len(time.timestamps) != len(time.frame_numbers):
-            raise ValueError(f"Error in Time '{time.uid}': If both 'timestamps' and 'frame_numbers' are non-null, they"
+        if time.timestamps and time.frame_numbers and len(time.timestamps) != len(time.frame_numbers):
+            raise ValueError(f"Error in Time '{time.uid}': If both 'timestamps' and 'frame_numbers' are non-null, they "
                              f"must have the same length.")
         row = {
             kw.REFERENCE_UID: time.uid,
@@ -518,9 +517,7 @@ class FITSWriter(SystemWriter):
         self._add_to_table(kw.LOOPS_TABLE, loop, row)
 
     def _create_primary_hdu(self) -> fits.PrimaryHDU:
-        hdr = fits.Header([(f'HIERARCH {md.key}' if len(md.key) > 8 else md.key,
-                            md.value,
-                            md.comment) for md in self._system.metadata])
+        hdr = fits.Header()
         hdr[kw.AOT_VERSION] = kw.CURRENT_AOT_VERSION
         hdr[kw.AOT_TIMESYS] = kw.AOT_TIMESYS_UTC
 
@@ -540,6 +537,9 @@ class FITSWriter(SystemWriter):
         if self._system.config is not None:
             hdr[kw.AOT_CONFIG] = self._system.config
 
+        hdr.extend([(f'HIERARCH {md.key}' if len(md.key) > 8 else md.key,
+                            md.value,
+                            md.comment) for md in self._system.metadata])
         return fits.PrimaryHDU(header=hdr)
 
     def _create_bintable_hdus(self) -> list[fits.BinTableHDU]:

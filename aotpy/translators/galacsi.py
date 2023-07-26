@@ -234,3 +234,6 @@ class GALACSITranslator(ESOTranslator):
 
     def _get_run_id(self) -> str:
         return '60.A-9278(B)'
+
+    def _get_chip_id(self) -> str:
+        return f'GALACSI'

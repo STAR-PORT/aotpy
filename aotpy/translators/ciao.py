@@ -162,3 +162,6 @@ class CIAOTranslator(ESOTranslator):
 
     def _get_run_id(self) -> str:
         return '60.A-9278(C)'
+
+    def _get_chip_id(self) -> str:
+        return f'CIAO{self._at_number}'

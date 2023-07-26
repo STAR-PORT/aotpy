@@ -33,7 +33,7 @@ def fits_type_to_aot(fits_type: str) -> str:
         return STRING_FORMAT
     if re.fullmatch(r'[QP][DE]\(\d*\)', fits_type):
         return LIST_FORMAT
-    raise ValueError('Format not in AOT FITS')
+    return ''
 
 
 STRING_FORMAT = 'str'  # e.g. 64A

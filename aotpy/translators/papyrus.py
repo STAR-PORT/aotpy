@@ -58,8 +58,8 @@ class PAPYRUSTranslator(BaseTranslator):
         time_stamp_commands = (np.array(data['wfcCommandMetaData']['timestamp'], dtype=float) / 1e9).tolist()
 
         # extract acquisition date from time stamps
-        self.system.date_beginning = datetime.datetime.fromtimestamp(time_stamp_commands[0])
-        self.system.date_end = datetime.datetime.fromtimestamp(time_stamp_commands[-1])
+        self.system.date_beginning = datetime.datetime.utcfromtimestamp(time_stamp_commands[0])
+        self.system.date_end = datetime.datetime.utcfromtimestamp(time_stamp_commands[-1])
 
         time_measurements = aotpy.Time(uid='Measurements time',
                                        timestamps=time_stamp_measurements,

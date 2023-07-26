@@ -21,7 +21,7 @@ try:
 except (ImportError, ModuleNotFoundError):
     tap = None
 
-from ..core.base import Metadatum
+import aotpy
 from .base import BaseTranslator
 
 ESO_TAP_OBS = "https://archive.eso.org/tap_obs"
@@ -95,6 +95,14 @@ class ESOTranslator(BaseTranslator):
         """
         pass
 
+    @abstractmethod
+    def _get_chip_id(self) -> str:
+        """
+        Get HIERARCH ESO DET CHIP1 ID for the specific data. This is an ESO archive requirement to ensure compatibility
+        when there are simultaneous recordings of the same instrument on different telescopes.
+        """
+        pass
+
     def add_archive_metadata(self, query_archive: bool = False) -> None:
         """
         Adds necessary metadata for ESO Archive to AOSystem.
@@ -107,10 +115,11 @@ class ESOTranslator(BaseTranslator):
         telescope = self._get_eso_telescope_name()
         metadata = {
             'ORIGIN': 'ESO-PARANAL',
-            'INSTRUME': self._get_eso_ao_name(),
-            'HIERARCH ESO OBS PROG ID': self._get_run_id(),
-            'TELESCOP': telescope.replace('%', ''),
             'DATE': datetime.now().isoformat(timespec='milliseconds'),
+            'TELESCOP': telescope.replace('%', ''),
+            'INSTRUME': self._get_eso_ao_name(),
+            'HIERARCH ESO DET CHIP1 ID': self._get_chip_id(),
+            'HIERARCH ESO OBS PROG ID': self._get_run_id(),
             'OBJECT': 'AO-TELEM',
             'OBSERVER': 'I, Condor',
             'DATE-OBS': self.system.date_beginning.astimezone(timezone.utc).replace(tzinfo=None).isoformat(
@@ -166,7 +175,7 @@ class ESOTranslator(BaseTranslator):
             else:
                 warnings.warn(f"Could not find data from telescope '{telescope}' near mjd_obs {beg.mjd} at the "
                               f"ESO Archive")
-        self.system.metadata.extend([Metadatum(k, v) for k, v in metadata.items()])
+        self.system.metadata.extend([aotpy.Metadatum(k, v) for k, v in metadata.items()])
 
     def get_atmospheric_parameters_from_archive(self) -> astropy.table.Table:
         """
