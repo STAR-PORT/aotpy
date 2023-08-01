@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8187230.svg)](https://doi.org/10.5281/zenodo.8187230)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8187229.svg)](https://doi.org/10.5281/zenodo.8187229)
 
 
 # aotpy
