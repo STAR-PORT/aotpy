@@ -12,8 +12,8 @@ from astropy.io import fits
 import aotpy
 from . import _keywords as kw
 
-__all__ = ['FITSFileImage', 'FITSURLImage', 'image_from_file', 'image_from_hdus', 'image_from_hdu',
-           'metadatum_from_card', 'metadata_from_hdu', 'datetime_to_iso', 'keyword_is_relevant']
+__all__ = ['FITSFileImage', 'FITSURLImage', 'image_from_fits_file', 'image_from_hdus', 'image_from_hdu',
+           'card_from_metadatum', 'metadatum_from_card', 'metadata_from_hdu', 'datetime_to_iso', 'keyword_is_relevant']
 
 
 def keyword_is_relevant(keyword):
@@ -88,9 +88,9 @@ class FITSURLImage(_FITSExternalImage):
         return self.url == other.url and self.index == other.index and self.time == other.time
 
 
-def image_from_file(path: str | os.PathLike, index: int = None, *, name: str = None, **kwargs) -> aotpy.Image:
+def image_from_fits_file(path: str | os.PathLike, index: int = None, *, name: str = None, **kwargs) -> aotpy.Image:
     """
-    Get `Image` from specified path or URL.
+    Get `Image` from FITS file specified on path or URL.
 
     Parameters
     ----------
@@ -199,7 +199,21 @@ def _get_image_fields_from_hdu(hdu) -> tuple[str, np.ndarray, str, str, list[aot
     return hdu.name, hdu.data, unit, _time, metadata
 
 
-def metadatum_from_card(card: fits.Card):
+def card_from_metadatum(md: aotpy.Metadatum) -> fits.Card:
+    """
+    Get `Card` from `Metadatum`.
+
+    Parameters
+    ----------
+    md
+        `Metadatum` to convert to `Card`.
+    """
+    return fits.Card(f'HIERARCH {md.key}' if (len(md.key) > 8 and not md.key.startswith('HIERARCH')) else md.key,
+                     md.value,
+                     md.comment)
+
+
+def metadatum_from_card(card: fits.Card) -> aotpy.Metadatum:
     """
     Get `Metadatum` from `Card`.
 

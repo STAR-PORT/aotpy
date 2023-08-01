@@ -11,7 +11,6 @@ import numpy as np
 from astropy.io import fits
 
 import aotpy
-from aotpy.io import image_from_file
 from .eso import ESOTranslator
 
 
@@ -79,16 +78,16 @@ class NAOMITranslator(ESOTranslator):
         wfs.non_common_path_aberration = aotpy.Aberration(
             uid='NCPA',
             modes=control_modes,
-            coefficients=image_from_file(path / 'Ctr.MODAL_OFFSETS_ROTATED_0001.fits')  # in DM modal space
+            coefficients=self._image_from_eso_file(path / 'Ctr.MODAL_OFFSETS_ROTATED_0001.fits')  # in DM modal space
         )
 
         wfs.detector = aotpy.Detector(
             uid='DET',
-            weight_map=image_from_file(path / 'Acq.DET1.WEIGHT_0001.fits'),
-            dark=image_from_file(path / 'Acq.DET1.DARK_0001.fits'),
-            flat_field=image_from_file(path / 'Acq.DET1.FLAT_0001.fits'),
-            bad_pixel_map=image_from_file(path / 'Acq.DET1.DEAD_0001.fits'),
-            sky_background=image_from_file(path / 'Acq.DET1.BACKGROUND_0001.fits')
+            weight_map=self._image_from_eso_file(path / 'Acq.DET1.WEIGHT_0001.fits'),
+            dark=self._image_from_eso_file(path / 'Acq.DET1.DARK_0001.fits'),
+            flat_field=self._image_from_eso_file(path / 'Acq.DET1.FLAT_0001.fits'),
+            bad_pixel_map=self._image_from_eso_file(path / 'Acq.DET1.DEAD_0001.fits'),
+            sky_background=self._image_from_eso_file(path / 'Acq.DET1.BACKGROUND_0001.fits')
         )
 
         pix_loop_frame = fits.getdata(path / 'NAOMI_PIXELS_0001.fits')
@@ -126,8 +125,8 @@ class NAOMITranslator(ESOTranslator):
             modes=control_modes,
             modal_coefficients=aotpy.Image('Modal Coefficients', modal_coefficients, time=loop_time),
             measurements_to_modes=aotpy.Image('Recn.REC1.CM', s2m),
-            modes_to_commands=image_from_file(path / 'RTC.M2DM_SCALED_0001.fits'),
-            commands_to_modes=image_from_file(path / 'RTC.DM2M_SCALED_0001.fits'),
+            modes_to_commands=self._image_from_eso_file(path / 'RTC.M2DM_SCALED_0001.fits'),
+            commands_to_modes=self._image_from_eso_file(path / 'RTC.DM2M_SCALED_0001.fits'),
             modes_to_measurements=aotpy.Image('ModalRecnCalibrat.REF_IM', m2s),
             closed=main_hdr['ESO AOS LOOP ST'],
             framerate=main_hdr['ESO AOS LOOP RATE']

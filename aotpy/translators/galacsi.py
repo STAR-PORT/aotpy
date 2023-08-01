@@ -11,7 +11,7 @@ import numpy as np
 from astropy.io import fits
 
 import aotpy
-from aotpy.io import image_from_file
+from aotpy.io import image_from_fits_file
 from .eso import ESOTranslator
 
 
@@ -63,13 +63,13 @@ class GALACSITranslator(ESOTranslator):
         lgs_time = aotpy.Time('LGS Loop Time', timestamps=lgs_timestamps.tolist(),
                               frame_numbers=lgs_frame_numbers.tolist())
 
-        aof_data_path = importlib.resources.files('aotpy.data') / 'GALACSI'
-        with importlib.resources.as_file(aof_data_path / 'subap.fits') as p:
-            subaperture_mask = image_from_file(p)
+        galacsi_data_path = importlib.resources.files('aotpy.data') / 'GALACSI'
+        with importlib.resources.as_file(galacsi_data_path / 'subap.fits') as p:
+            subaperture_mask = image_from_fits_file(p, name='LGS WFS SUBAPERTURE MASK')
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)
 
         dsm_positions = aotpy.Image('DSM_positions', lgs_loop_frame['DSM_Positions'][:, self.dsm_valid])
-        m2c = image_from_file(path_lgs / 'LGSCtr.ACT_POS_MODAL_PROJECTION.fits')
+        m2c = self._image_from_eso_file(path_lgs / 'LGSCtr.ACT_POS_MODAL_PROJECTION.fits')
         lgs_tfz_num = aotpy.Image('LGSCtr.A_TERMS', fits.getdata(path_lgs / 'LGSCtr.A_TERMS.fits').T)
         lgs_tfz_den = aotpy.Image('LGSCtr.B_TERMS', fits.getdata(path_lgs / 'LGSCtr.B_TERMS.fits').T)
         jit_tfz_num = fits.getdata(path_lgs / 'JitCtr.A_TERMS.fits').T
@@ -98,8 +98,8 @@ class GALACSITranslator(ESOTranslator):
 
             wfs.detector = aotpy.Detector(
                 uid=f'LGS DET{i}',
-                dark=image_from_file(path_lgs / f'LGSAcq.DET{i}.DARK.fits'),
-                weight_map=image_from_file(path_lgs / f'LGSAcq.DET{i}.WEIGHT.fits')
+                dark=self._image_from_eso_file(path_lgs / f'LGSAcq.DET{i}.DARK.fits'),
+                weight_map=self._image_from_eso_file(path_lgs / f'LGSAcq.DET{i}.WEIGHT.fits')
             )
             self.system.wavefront_sensors.append(wfs)
 
@@ -178,9 +178,9 @@ class GALACSITranslator(ESOTranslator):
         ngs_wfs = aotpy.ShackHartmann(
             uid='NGS WFS1',
             n_valid_subapertures=4,  # All subapertures are valid
-            subaperture_mask=aotpy.Image('NGS_WFS_SUBAPERTURE_MASK', np.array([[1, 3], [2, 4]])),
+            subaperture_mask=aotpy.Image('NGS WFS SUBAPERTURE MASK', np.array([[1, 3], [2, 4]])),
             source=ngs,
-            measurements=aotpy.Image('NGS_WFS_Gradients', gradients),
+            measurements=aotpy.Image('NGS WFS_Gradients', gradients),
             ref_measurements=aotpy.Image('IRAcq.DET1.REFSLP_WITH_OFFSETS', reference),
             subaperture_intensities=aotpy.Image('WFS_Intensities', ir_loop_frame['WFS_Intensities'])
         )
@@ -205,8 +205,8 @@ class GALACSITranslator(ESOTranslator):
 
         ngs_wfs.detector = aotpy.Detector(
             uid='NGS DET1',
-            dark=image_from_file(path_ir / 'IRAcq.DET1.DARK.fits'),
-            weight_map=image_from_file(path_ir / 'IRAcq.DET1.WEIGHT.fits'),
+            dark=self._image_from_eso_file(path_ir / 'IRAcq.DET1.DARK.fits'),
+            weight_map=self._image_from_eso_file(path_ir / 'IRAcq.DET1.WEIGHT.fits'),
             pixel_intensities=aotpy.Image(name='NGS Pixels',
                                           data=self._get_pixel_data_from_table(pix_loop_frame),
                                           time=pix_time)

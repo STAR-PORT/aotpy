@@ -16,6 +16,7 @@ from ..base import SystemReader
 
 _reference_pattern = re.compile(r'([^<]+)<(.+)>(\d+)?')
 
+
 def read_system_from_fits(filename: str, extra_data: bool = False, **kwargs) -> aotpy.AOSystem:
     """
     Get `AOSystem` from FITS file specified by `filename`.

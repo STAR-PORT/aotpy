@@ -7,6 +7,7 @@ functionality).
 
 """
 
+import os
 import warnings
 from abc import abstractmethod
 from datetime import timedelta, datetime, timezone
@@ -98,7 +99,7 @@ class ESOTranslator(BaseTranslator):
     @abstractmethod
     def _get_chip_id(self) -> str:
         """
-        Get HIERARCH ESO DET CHIP1 ID for the specific data. This is an ESO archive requirement to ensure compatibility
+        Get ESO DET CHIP1 ID for the specific data. This is an ESO archive requirement to ensure compatibility
         when there are simultaneous recordings of the same instrument on different telescopes.
         """
         pass
@@ -118,8 +119,8 @@ class ESOTranslator(BaseTranslator):
             'DATE': datetime.now().isoformat(timespec='milliseconds'),
             'TELESCOP': telescope.replace('%', ''),
             'INSTRUME': self._get_eso_ao_name(),
-            'HIERARCH ESO DET CHIP1 ID': self._get_chip_id(),
-            'HIERARCH ESO OBS PROG ID': self._get_run_id(),
+            'ESO DET CHIP1 ID': self._get_chip_id(),
+            'ESO OBS PROG ID': self._get_run_id(),
             'OBJECT': 'AO-TELEM',
             'OBSERVER': 'I, Condor',
             'DATE-OBS': self.system.date_beginning.astimezone(timezone.utc).replace(tzinfo=None).isoformat(
@@ -127,14 +128,14 @@ class ESOTranslator(BaseTranslator):
             'MJD-OBS': Time(self.system.date_beginning, scale='utc').mjd,
             'MJD-END': Time(self.system.date_end, scale='utc').mjd,
             'EXPTIME': (self.system.date_end - self.system.date_beginning).total_seconds(),
-            'HIERARCH ESO DPR CATG': 'CALIB',
-            'HIERARCH ESO DPR TYPE': f'AO-TELEM,AOT,{self._get_eso_ao_name()}',
-            'HIERARCH ESO DPR TECH': self.system.ao_mode,
+            'ESO DPR CATG': 'CALIB',
+            'ESO DPR TYPE': f'AO-TELEM,AOT,{self._get_eso_ao_name()}',
+            'ESO DPR TECH': self.system.ao_mode,
         }
         if self.system.main_telescope.azimuth is not None:
-            metadata['HIERARCH ESO TEL AZ'] = self.system.main_telescope.azimuth
+            metadata['ESO TEL AZ'] = self.system.main_telescope.azimuth
         if self.system.main_telescope.elevation is not None:
-            metadata['HIERARCH ESO TEL ALT'] = self.system.main_telescope.elevation
+            metadata['ESO TEL ALT'] = self.system.main_telescope.elevation
 
         if query_archive:
             if tap is None:
@@ -165,13 +166,13 @@ class ESOTranslator(BaseTranslator):
                     'DEC': res['dec'],
                     # 'PI-COI': res['pi_coi'],
                     # we do not store PI-COI because it is not needed and can cause issues with special chars
-                    'HIERARCH ESO OBS PROG ID': res['prog_id'],
-                    'HIERARCH ESO INS MODE': res['ins_mode'],
+                    'ESO OBS PROG ID': res['prog_id'],
+                    'ESO INS MODE': res['ins_mode'],
                 }
-                if 'HIERARCH ESO TEL AZ' not in metadata:
-                    metadata['HIERARCH ESO TEL AZ'] = res['tel_az']
-                if 'HIERARCH ESO TEL ALT' not in metadata:
-                    metadata['HIERARCH ESO TEL ALT'] = res['tel_alt']
+                if 'ESO TEL AZ' not in metadata:
+                    metadata['ESO TEL AZ'] = res['tel_az']
+                if 'ESO TEL ALT' not in metadata:
+                    metadata['ESO TEL ALT'] = res['tel_alt']
             else:
                 warnings.warn(f"Could not find data from telescope '{telescope}' near mjd_obs {beg.mjd} at the "
                               f"ESO Archive")
@@ -247,3 +248,18 @@ class ESOTranslator(BaseTranslator):
         else:
             raise NotImplementedError
         return np.stack([tip, tilt], axis=1)
+
+    @staticmethod
+    def _fix_pointing_format(time: float):
+        # TODO test this and add to translators
+        # Old ESO pointing data was stored using a pseudo-float format such that e.g. 100526.90157 -> +10h 05m 26.90157s
+        # This function converts from this format into decimal degrees
+        t = str(time)
+        return int(t[:2]) + int(t[2:4]) / 60 + float(t[4:]) / 3600
+
+    @staticmethod
+    def _image_from_eso_file(filename: str | os.PathLike) -> aotpy.Image:
+        image = aotpy.image_from_fits_file(filename)
+        image.metadata = [md for md in image.metadata if not md.key.startswith("ESO DPR") and md.key != 'ORIGIN' and
+                          md.key != 'RA' and md.key != 'DEC']
+        return image

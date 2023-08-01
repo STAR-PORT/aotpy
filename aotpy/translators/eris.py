@@ -11,7 +11,7 @@ import numpy as np
 from astropy.io import fits
 
 import aotpy
-from aotpy.io import image_from_file
+from aotpy.io import image_from_fits_file
 from .eso import ESOTranslator
 
 
@@ -82,7 +82,7 @@ class ERISTranslator(ESOTranslator):
 
         eris_data_path = importlib.resources.files('aotpy.data') / 'ERIS'
         with importlib.resources.as_file(eris_data_path / 'ho_subap.fits') as p:
-            subaperture_mask = image_from_file(p, name='LGS WFS SUBAPERTURE MASK')
+            subaperture_mask = image_from_fits_file(p, name='LGS WFS SUBAPERTURE MASK')
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)
 
         reference = self._stack_slopes(fits.getdata(self._path / 'LGSAcq.DET1.REFSLP_WITH_OFFSETS.fits'),
@@ -101,9 +101,9 @@ class ERISTranslator(ESOTranslator):
 
         lgs_wfs.detector = aotpy.Detector(
             uid='LGS DET1',
-            dark=image_from_file(self._path / 'LGSAcq.DET1.DARK.fits'),
-            weight_map=image_from_file(self._path / 'LGSAcq.DET1.WEIGHT.fits'),
-            sky_background=image_from_file(self._path / 'LGSAcq.DET1.BACKGROUND.fits'),
+            dark=self._image_from_eso_file(self._path / 'LGSAcq.DET1.DARK.fits'),
+            weight_map=self._image_from_eso_file(self._path / 'LGSAcq.DET1.WEIGHT.fits'),
+            sky_background=self._image_from_eso_file(self._path / 'LGSAcq.DET1.BACKGROUND.fits'),
             pixel_intensities=aotpy.Image(name='LGS Pixels',
                                           data=self._get_pixel_data_from_table(lgs_pix_frame),
                                           time=aotpy.Time('LGS Pixel Time',
@@ -128,8 +128,8 @@ class ERISTranslator(ESOTranslator):
             time_filter_num=aotpy.Image('LGSCtr.A_TERMS', fits.getdata(self._path / 'LGSCtr.A_TERMS.fits').T),
             time_filter_den=aotpy.Image('LGSCtr.B_TERMS', fits.getdata(self._path / 'LGSCtr.B_TERMS.fits').T),
             measurements_to_modes=aotpy.Image('CLMatrixOptimiser.S2M', s2m),
-            modes_to_commands=image_from_file(self._path / 'CLMatrixOptimiser.M2V.fits'),
-            commands_to_modes=image_from_file(self._path / 'CLMatrixOptimiser.V2M.fits'),
+            modes_to_commands=self._image_from_eso_file(self._path / 'CLMatrixOptimiser.M2V.fits'),
+            commands_to_modes=self._image_from_eso_file(self._path / 'CLMatrixOptimiser.V2M.fits'),
             modes_to_measurements=aotpy.Image('CLMatrixOptimiser.M2S', m2s),
         ))
 
@@ -189,7 +189,7 @@ class ERISTranslator(ESOTranslator):
         lo_time = aotpy.Time('LO Loop Time', timestamps=lo_timestamps_list, frame_numbers=ho_frame_numbers.tolist())
 
         with importlib.resources.as_file(eris_data_path / 'lo_subap.fits') as p:
-            subaperture_mask = image_from_file(p, name='LO WFS SUBAPERTURE MASK')
+            subaperture_mask = image_from_fits_file(p, name='LO WFS SUBAPERTURE MASK')
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)
 
         reference = self._stack_slopes(fits.getdata(self._path / 'LOAcq.DET1.REFSLP_WITH_OFFSETS.fits'),
@@ -246,9 +246,9 @@ class ERISTranslator(ESOTranslator):
 
         lo_wfs.detector = aotpy.Detector(
             uid='LO DET1',
-            dark=image_from_file(self._path / 'LOAcq.DET1.DARK.fits'),
-            weight_map=image_from_file(self._path / 'LOAcq.DET1.WEIGHT.fits'),
-            sky_background=image_from_file(self._path / 'LOAcq.DET1.BACKGROUND.fits'),
+            dark=self._image_from_eso_file(self._path / 'LOAcq.DET1.DARK.fits'),
+            weight_map=self._image_from_eso_file(self._path / 'LOAcq.DET1.WEIGHT.fits'),
+            sky_background=self._image_from_eso_file(self._path / 'LOAcq.DET1.BACKGROUND.fits'),
             pixel_intensities=aotpy.Image(name='LO Pixels',
                                           data=self._get_pixel_data_from_table(lo_pix_frame),
                                           time=aotpy.Time('LO Pixel Time',
@@ -308,7 +308,7 @@ class ERISTranslator(ESOTranslator):
 
         eris_data_path = importlib.resources.files('aotpy.data') / 'ERIS'
         with importlib.resources.as_file(eris_data_path / 'ho_subap.fits') as p:
-            subaperture_mask = image_from_file(p, name='HO WFS SUBAPERTURE MASK')
+            subaperture_mask = image_from_fits_file(p, name='HO WFS SUBAPERTURE MASK')
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)
 
         reference = self._stack_slopes(fits.getdata(self._path / 'HOAcq.DET1.REFSLP_WITH_OFFSETS.fits'),
@@ -327,9 +327,9 @@ class ERISTranslator(ESOTranslator):
 
         ho_wfs.detector = aotpy.Detector(
             uid='DET1',
-            dark=image_from_file(self._path / 'HOAcq.DET1.DARK.fits'),
-            weight_map=image_from_file(self._path / 'HOAcq.DET1.WEIGHT.fits'),
-            sky_background=image_from_file(self._path / 'HOAcq.DET1.BACKGROUND.fits'),
+            dark=self._image_from_eso_file(self._path / 'HOAcq.DET1.DARK.fits'),
+            weight_map=self._image_from_eso_file(self._path / 'HOAcq.DET1.WEIGHT.fits'),
+            sky_background=self._image_from_eso_file(self._path / 'HOAcq.DET1.BACKGROUND.fits'),
             pixel_intensities=aotpy.Image(name='HO Pixels',
                                           data=self._get_pixel_data_from_table(ho_pix_frame),
                                           time=aotpy.Time('HO Pixel Time',
@@ -353,8 +353,8 @@ class ERISTranslator(ESOTranslator):
             time_filter_num=aotpy.Image('HOCtr.A_TERMS', fits.getdata(self._path / 'HOCtr.A_TERMS.fits').T),
             time_filter_den=aotpy.Image('HOCtr.B_TERMS', fits.getdata(self._path / 'HOCtr.B_TERMS.fits').T),
             measurements_to_modes=aotpy.Image('CLMatrixOptimiser.S2M', s2m),
-            modes_to_commands=image_from_file(self._path / 'CLMatrixOptimiser.M2V.fits'),
-            commands_to_modes=image_from_file(self._path / 'CLMatrixOptimiser.V2M.fits'),
+            modes_to_commands=self._image_from_eso_file(self._path / 'CLMatrixOptimiser.M2V.fits'),
+            commands_to_modes=self._image_from_eso_file(self._path / 'CLMatrixOptimiser.V2M.fits'),
             modes_to_measurements=aotpy.Image('CLMatrixOptimiser.M2S', m2s),
         ))
 

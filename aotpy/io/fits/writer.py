@@ -10,7 +10,7 @@ from astropy.io import fits
 
 import aotpy
 from . import _keywords as kw
-from .utils import FITSFileImage, FITSURLImage, datetime_to_iso
+from .utils import FITSFileImage, FITSURLImage, datetime_to_iso, card_from_metadatum
 from ..base import SystemWriter
 
 # NaN is defined here as a single precision float (32-bits), which is the lowest possible float precision in FITS.
@@ -537,9 +537,7 @@ class FITSWriter(SystemWriter):
         if self._system.config is not None:
             hdr[kw.AOT_CONFIG] = self._system.config
 
-        hdr.extend([(f'HIERARCH {md.key}' if len(md.key) > 8 else md.key,
-                            md.value,
-                            md.comment) for md in self._system.metadata])
+        hdr.extend([card_from_metadatum(md) for md in self._system.metadata])
         return fits.PrimaryHDU(header=hdr)
 
     def _create_bintable_hdus(self) -> list[fits.BinTableHDU]:
@@ -611,9 +609,7 @@ class FITSWriter(SystemWriter):
     def _create_image_hdus(self) -> list[fits.ImageHDU]:
         hdus = []
         for image in self._images.values():
-            hdr = fits.Header([(f'HIERARCH {md.key}' if len(md.key) > 8 else md.key,
-                                md.value,
-                                md.comment) for md in image.metadata])
+            hdr = fits.Header([card_from_metadatum(md) for md in image.metadata])
             if image.time is not None:
                 hdr[kw.TIME_REFERENCE] = self._create_row_reference(image.time.uid)
             if image.unit is not None:

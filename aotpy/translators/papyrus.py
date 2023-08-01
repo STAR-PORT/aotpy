@@ -6,13 +6,13 @@ Note that the use of scipy.io.loadmat to read the .mat files in python suppose t
 saved with the version -v7 of matlab or anterior. scipy.io.loadmat does not work for files saved with matlab -v7.3.
 """
 
+import datetime
 import importlib.resources
 
-import datetime
 import numpy as np
 
 import aotpy
-from aotpy.io import image_from_file
+from aotpy.io import image_from_fits_file
 from .base import BaseTranslator
 
 try:
@@ -33,7 +33,7 @@ class PAPYRUSTranslator(BaseTranslator):
 
         papyrus_data_path = importlib.resources.files('aotpy.data') / 'PAPYRUS'
         with importlib.resources.as_file(papyrus_data_path / 'T152_pupil.fits') as p:
-            pupil_mask = image_from_file(p, name='T152 PUPIL')
+            pupil_mask = image_from_fits_file(p, name='T152 PUPIL')
 
         self.system.main_telescope = aotpy.MainTelescope(
             uid="T152",
