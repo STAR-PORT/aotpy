@@ -1,5 +1,5 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8187229.svg)](https://doi.org/10.5281/zenodo.8187229)
-
+[![Documentation Status](https://readthedocs.org/projects/aotpy/badge/?version=latest)](https://aotpy.readthedocs.io/en/latest/?badge=latest)
 
 # aotpy
 Helper Python package for handling Adaptive Optics Telemetry (AOT) standard files.
