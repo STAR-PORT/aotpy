@@ -2,13 +2,21 @@
 This module contains a classes used as a base for the rest of the core of aotpy.
 """
 
-from collections import namedtuple
 from dataclasses import dataclass
 from typing import Any
 
 __all__ = ['Referenceable', 'Coordinates', 'Metadatum']
 
-Coordinates = namedtuple('Coordinates', 'x y')
+
+@dataclass
+class Coordinates:
+    """Contains a set of horizontal (x) and vertical (y) Cartesian coordinates in a plane."""
+
+    x: float = None
+    "Horizontal Cartesian coordinate."
+
+    y: float = None
+    "Vertical Cartesian coordinate."
 
 
 @dataclass

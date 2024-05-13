@@ -26,7 +26,6 @@ class Loop(Referenceable):
     "Indicates whether the loop was opened or closed for the duration of the data collection."
 
     commands: Image = None
-
     """Sequence of commands sent to the associated wavefront corrector. Each of the :math:`t` frames contains the values
     sent to each of the :math:`a_v` valid actuators of a certain wavefront corrector.
     (Dimensions :math:`t \\times a_v`, in m units, using data type flt)"""

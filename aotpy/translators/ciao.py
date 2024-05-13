@@ -39,7 +39,7 @@ class CIAOTranslator(ESOTranslator):
             ao_mode='SCAO',
             name='CIAO',
             strehl_ratio=main_hdr['ESO AOS ATM SR'],
-            temporal_error=main_hdr['ESO AOS ATM TERR']
+            metadata=[aotpy.Metadatum('TEMP-ERR', main_hdr['ESO AOS ATM TERR'])]
         )
         self.system.main_telescope = aotpy.MainTelescope(
             uid=f'ESO VLT AT{at_number}',
@@ -131,7 +131,7 @@ class CIAOTranslator(ESOTranslator):
         asm = aotpy.AtmosphericParameters(
             'ESO ASM (Astronomical Site Monitor)',
             wavelength=500e-9,
-            fwhm=[main_hdr['ESO TEL AMBI FWHM']],
+            seeing=[main_hdr['ESO TEL AMBI FWHM']],
             tau0=[main_hdr['ESO TEL AMBI TAU0']],
             theta0=[main_hdr['ESO TEL AMBI THETA0']],
             layers_wind_direction=aotpy.Image('ESO TEL AMBI WINDDIR', np.array([[main_hdr['ESO TEL AMBI WINDDIR']]])),
@@ -140,7 +140,7 @@ class CIAOTranslator(ESOTranslator):
 
         aos = aotpy.AtmosphericParameters(
             'AO System',
-            fwhm=[main_hdr['ESO AOS ATM SEEING']],
+            seeing=[main_hdr['ESO AOS ATM SEEING']],
             tau0=[main_hdr['ESO AOS ATM TAU0']],
         )
 

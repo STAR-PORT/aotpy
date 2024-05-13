@@ -1,6 +1,46 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
-]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "aotpy"
+version = "2.0.0"
+authors = [
+    { name = "Tiago Gomes", email = "tiagogomes@fe.up.pt" },
+]
+description = "Helper package for handling Adaptive Optics Telemetry (AOT) standard files"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.10"
+keywords = ["Adaptive Optics", "Telemetry", "Data Exchange Format", "AOT", "FITS", "PSF Reconstruction",
+    "Atmospheric Turbulence"]
+license = { file = "LICENSE", content-type = "text/plain" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Topic :: File Formats",
+    "Topic :: Scientific/Engineering :: Astronomy"
+]
+dependencies = [
+    "astropy>=5.1.1",
+    "numpy>=1.20"
+]
+
+[project.optional-dependencies]
+esoarchive = ["pyvo>=1.4"]
+savfiles = ["scipy>=1.5.0"]
+docs = ["sphinx", "sphinx-rtd-theme"]
+all = ["pyvo>=1.4", "scipy>=1.5.0"]
+
+[tool.setuptools.packages.find]
+include = ["aotpy*"]
+
+[tool.setuptools.package-data]
+"aotpy.data" = ["*/*.fits"]
+
+[project.urls]
+Repository = "https://github.com/STAR-PORT/aotpy"
+Issues = "https://github.com/STAR-PORT/aotpy/issues"
+Documentation = "https://aotpy.readthedocs.io/"

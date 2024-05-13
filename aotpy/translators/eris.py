@@ -11,7 +11,7 @@ import numpy as np
 from astropy.io import fits
 
 import aotpy
-from aotpy.io import image_from_fits_file
+from aotpy.io.fits import image_from_fits_file
 from .eso import ESOTranslator
 
 

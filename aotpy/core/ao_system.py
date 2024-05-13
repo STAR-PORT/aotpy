@@ -41,10 +41,10 @@ class AOSystem:
     'Name of the AO system that produced the data.'
 
     strehl_ratio: float = None
-    'Estimated strehl ratio (arcsec).'
+    'Estimated mean Strehl ratio for the duration of the observation (arcsec).'
 
-    temporal_error: float = None
-    'Estimated temporal error TODO: (units?).'
+    strehl_wavelength: float = None
+    'Reference wavelength for the Strehl ratio estimation (m).'
 
     config: str = None
     'Free-form text that describes configuration parameters of the system.'
@@ -73,42 +73,65 @@ class AOSystem:
     metadata: list[Metadatum] = field(default_factory=list)
     """List of Metadatum objects that are associated with the overall system."""
 
-    def write_to_file(self, filename: str | os.PathLike, **kwargs) -> None:
+    def write_to_file(self, filename: str | os.PathLike, file_type: str = None, **kwargs) -> None:
         """
-        Writes `AOSystem` to a file. The writing function is deduced by the extension in the specified `filename`.
+        Writes `AOSystem` to a file using the correct writing function for that file type. The file type is deduced by
+        the extension in the specified `filename` but it may instead be directly set via the `file_type` parameter.
 
         Parameters
         ----------
         filename
             Path to the file to be written.
+        file_type
+            The type of the file to be written. By default, it attempts to determine the type from the file extension.
         kwargs
             Optional keyword arguments passed on as options to the writer function.
         """
-        ext = Path(filename).suffix[1:]
+        if file_type is None:
+            p = Path(filename)
+            ext = p.suffix[1:]
+            if not ext:
+                raise ValueError(f"'{filename}' does not have a file extension. If you know the correct file type, you "
+                                 f"may specify it through the 'file_type' argument. "
+                                 f"Available types: {str(list(_AVAILABLE_WRITERS.keys()))[1:-1]}")
+            if ext.lower() in ['.zip', '.tar', '.gz', '.tgz'] and len(p.suffixes) > 1:
+                ext = p.suffixes[0]
+        else:
+            ext = file_type
         if (e := ext.lower()) in _AVAILABLE_WRITERS:
             _AVAILABLE_WRITERS[e](self).write(filename, **kwargs)
         else:
-            raise ValueError(f"No available writer for extension '{ext}'. "
-                             f"Available extensions: {str(list(_AVAILABLE_WRITERS.keys()))[1:-1]}")
+            raise ValueError(f"No available writer for file type '{ext}'. "
+                             f"Available types: {str(list(_AVAILABLE_WRITERS.keys()))[1:-1]}")
 
     @staticmethod
-    def read_from_file(filename: str | os.PathLike, **kwargs) -> 'AOSystem':
+    def read_from_file(filename: str | os.PathLike, file_type: str = None, **kwargs) -> 'AOSystem':
         """
-        Reads `AOSystem` from a file. The reading function is deduced by the extension in the specified `filename`.
+        Reads `AOSystem` from a file using the correct reading function for that file type. The file type is deduced by
+        the extension in the specified `filename` but it may instead be directly set via the `file_type` parameter.
 
         Parameters
         ----------
         filename
             Path to the file to be read.
+        file_type
+            The type of the file to be read. By default, it attempts to determine the type from the file extension.
         kwargs
             Optional keyword arguments passed on as options to the reader function.
         """
-        ext = Path(filename).suffix[1:]
+        if file_type is None:
+            ext = Path(filename).suffix[1:]
+            if not ext:
+                raise ValueError(f"'{filename}' does not have a file extension. You may pick a filename with an "
+                                 f"extension or specify the type through the 'file_type' argument. "
+                                 f"Available types: {str(list(_AVAILABLE_READERS.keys()))[1:-1]}")
+        else:
+            ext = file_type
         if (e := ext.lower()) in _AVAILABLE_READERS:
             return _AVAILABLE_READERS[e](filename, **kwargs).get_system()
         else:
-            raise ValueError(f"No available reader for extension '{ext}'. "
-                             f"Available extensions: {str(list(_AVAILABLE_READERS.keys()))[1:-1]}")
+            raise ValueError(f"No available reader for file type '{ext}'. "
+                             f"Available types: {str(list(_AVAILABLE_READERS.keys()))[1:-1]}")
 
     def __str__(self) -> str:
         if self.name:

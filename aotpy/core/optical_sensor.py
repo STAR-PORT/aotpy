@@ -41,8 +41,12 @@ class Detector(Referenceable):
     :math:`x` pixels horizontally and :math:`y` pixels vertically.
     (Dimensions :math:`t \\times h \\times w`, in ADU units, using data type flt)"""
 
+    field_centre: Coordinates = field(default_factory=Coordinates)
+    """Defines the horizontal/vertical coordinates of the detector pixel on which the centre of the field is projected. 
+    Fractional `Coordinates` values imply that the centre is located in-between two pixels. (in pix units)"""
+
     integration_time: float = None
-    'TODO: Integration time. (in s units)'
+    'Duration in seconds a pixel integrates flux, independent of the detector reading scheme. (in s units)'
 
     coadds: int = None
     'Number of frame co-additions.  (in count units)'
@@ -57,16 +61,17 @@ class Detector(Referenceable):
     Summing up to 1. (Dimensions :math:`h \\times w`, dimensionless quantity, using data type flt)"""
 
     quantum_efficiency: float = None
-    'TODO: Quantum efficiency. (dimensionless quantity)'
+    """A 0–1 scalar indicating the ability to convert a photon into a usable electron. Quoted at the central wavelength 
+    as an effective value (dimensionless quantity)"""
 
     pixel_scale: float = None
-    r'TODO: Pixel scale. (in rad pix\ :math:`^{-1}` units)'
+    r'Resolution in radians per detector pixel. (in rad pix\ :math:`^{-1}` units)'
 
     binning: int = None
-    'TODO: Binning. (in count units)'
+    'Integer value indicating the 2D pixel combination by the binning factor. (in count units)'
 
     bandwidth: float = None
-    'TODO: Spectral bandwidth. (in m units)'
+    'Width of the filter/bandpass of the optics+detector. (in m units)'
 
     transmission_wavelength: list[float] = field(default_factory=list)
     'List of wavelengths that describe a transmission profile. (in m units)'
@@ -79,10 +84,11 @@ class Detector(Referenceable):
     (Dimensions :math:`h \\times w`, in ADU units, using data type flt)"""
 
     gain: float = None
-    r'TODO: Gain. (in e\ :math:`^-` units)'
+    r'Scalar magnitude of detector signal amplification. (in e\ :math:`^-` units)'
 
     excess_noise: float = None
-    r'TODO: Excess noise. (in e\ :math:`^-` units)'
+    r"""Photon-noise gain factor (scalar) as a result of the electron-multiplied gain amplification in EMCCDs. 
+    (in e\ :math:`^-` units)"""
 
     filter: str = None
     'Name of filter in use. (dimensionless quantity)'

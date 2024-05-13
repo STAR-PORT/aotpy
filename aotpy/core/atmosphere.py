@@ -23,7 +23,7 @@ class AtmosphericParameters(Referenceable):
     r0: list[float] = field(default_factory=list)
     'List of Fried parameters at reference wavelength at zenith, over time. (in m units)'
 
-    fwhm: list[float] = field(default_factory=list)
+    seeing: list[float] = field(default_factory=list)
     'List of full width at half maximum measures of the seeing disc at zenith, over time. (in arcsec units)'
 
     tau0: list[float] = field(default_factory=list)
@@ -32,7 +32,7 @@ class AtmosphericParameters(Referenceable):
     theta0: list[float] = field(default_factory=list)
     'List of isoplanatic angles, over time. (in rad units)'
 
-    layers_weight: Image = None
+    layers_relative_weight: Image = None
     """Fractional weight of each :math:`l` turbulence layer (sums to 1), for each time instant.
     (Dimensions :math:`t \\times l`, dimensionless quantity, using data type flt)"""
 

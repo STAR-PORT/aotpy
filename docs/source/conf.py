@@ -11,9 +11,8 @@ sys.path.insert(0, os.path.abspath('../../.'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'aotpy'
-copyright = '2023, Faculdade de Engenharia da Universidade do Porto'
+copyright = '2024, Faculdade de Engenharia da Universidade do Porto'
 author = 'Tiago Gomes'
-# release = '0.4.0'
 
 release = metadata.version(project)
 # The short X.Y version.

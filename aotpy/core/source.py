@@ -27,7 +27,7 @@ class Source(Referenceable):
     azimuth_offset: float = None
     "Offset from the Main Telescope's `azimuth`. (in deg units)"
 
-    width: float = None
+    fwhm: float = None
     'Effective width at zenith. (in rad units)'
 
     def __post_init__(self):
@@ -82,4 +82,4 @@ class RayleighLaserGuideStar(LaserGuideStar):
     'Fixed distance of the LGS from the telescope. (in m units)'
 
     depth: float = None
-    'TODO: Depth (in m units)'
+    'Range covered by the laser light while the shutter is opened. (in m units)'

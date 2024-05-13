@@ -135,7 +135,7 @@ class NAOMITranslator(ESOTranslator):
         asm = aotpy.AtmosphericParameters(
             'ESO ASM (Astronomical Site Monitor)',
             wavelength=500e-9,
-            fwhm=[main_hdr['ESO TEL AMBI FWHM']],
+            seeing=[main_hdr['ESO TEL AMBI FWHM']],
             tau0=[main_hdr['ESO TEL AMBI TAU0']],
             theta0=[main_hdr['ESO TEL AMBI THETA0']],
             layers_wind_direction=aotpy.Image('ESO TEL AMBI WINDDIR', np.array([[main_hdr['ESO TEL AMBI WINDDIR']]])),

@@ -4,6 +4,14 @@ aotpy.io.fits package
 Submodules
 ----------
 
+aotpy.io.fits.compat module
+---------------------------
+
+.. automodule:: aotpy.io.fits.compat
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 aotpy.io.fits.reader module
 ---------------------------
 

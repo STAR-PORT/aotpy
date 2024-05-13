@@ -23,6 +23,7 @@ except (ImportError, ModuleNotFoundError):
     tap = None
 
 import aotpy
+from aotpy.io.fits import image_from_fits_file
 from .base import BaseTranslator
 
 ESO_TAP_OBS = "https://archive.eso.org/tap_obs"
@@ -211,7 +212,7 @@ class ESOTranslator(BaseTranslator):
         Parameters
         ----------
         az
-            ESO azimuth to be converted
+            ESO azimuth to be converted.
         """
         # We need to subtract the angle between north and south and then apply symmetry.
         return -(az - 180) % 360
@@ -259,7 +260,7 @@ class ESOTranslator(BaseTranslator):
 
     @staticmethod
     def _image_from_eso_file(filename: str | os.PathLike) -> aotpy.Image:
-        image = aotpy.image_from_fits_file(filename)
+        image = image_from_fits_file(filename)
         image.metadata = [md for md in image.metadata if not md.key.startswith("ESO DPR") and md.key != 'ORIGIN' and
                           md.key != 'RA' and md.key != 'DEC']
         return image

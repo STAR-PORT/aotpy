@@ -22,7 +22,7 @@ class SystemWriter(ABC):
 
     @abstractmethod
     def __init__(self, system: aotpy.AOSystem) -> None:
-        self._system = system
+        pass
 
     @abstractmethod
     def write(self, filename: str | os.PathLike, **kwargs) -> None:
@@ -48,48 +48,17 @@ class SystemReader(ABC):
     ----------
     filename
         Path to file to be read into an `AOSystem`.
-    extra_data : default = False
-        Whether it is expected that the file contains some data that does not fit the AOT standard. If `extra_data` is
-        not `True`, user will be warned if extra data is detected.
     **kwargs
         Keyword arguments passed on as options to the file handling function.
     """
 
-    def __init__(self, filename: str | os.PathLike, *, extra_data: bool = False, **kwargs) -> None:
-        self._filename = filename
-        self._extra_data_flag = extra_data
-
-        self._initialize_data()
-        self._system, self._extra_data = self._read(**kwargs)
-
-    def get_system(self) -> aotpy.AOSystem:
-        """
-        Return `AOSystem` that has been read.
-        """
-        return self._system
-
-    def get_extra_data(self) -> list | None:
-        """
-        Return a list of extra data that may have been in file. If no extra data exists, `None` is returned.
-        """
-        return self._extra_data
-
     @abstractmethod
-    def _initialize_data(self) -> None:
-        """
-        Initialize data structures necessary for reading the file.
-        """
+    def __init__(self, filename: str | os.PathLike, **kwargs) -> None:
         pass
 
     @abstractmethod
-    def _read(self, **kwargs) -> tuple[aotpy.AOSystem, list]:
+    def get_system(self) -> aotpy.AOSystem:
         """
-        Read file and build `AOSystem` that contains the data in the initialized `filename`.
-        Return the system that was built along with any extra data that may be present.
-
-        Parameters
-        ----------
-        **kwargs
-            Keyword arguments passed on as options to the file handling function.
+        Return `AOSystem` that has been read.
         """
         pass

@@ -10,19 +10,17 @@ import numpy as np
 from astropy.io import fits
 
 import aotpy
-from . import _keywords as kw
+from ._strings import IMAGE_UNIT, TIME_REFERENCE
 
-__all__ = ['FITSFileImage', 'FITSURLImage', 'image_from_fits_file', 'image_from_hdus', 'image_from_hdu',
-           'card_from_metadatum', 'metadatum_from_card', 'metadata_from_hdu', 'datetime_to_iso', 'keyword_is_relevant']
+_valid_filename = re.compile(r'[a-zA-Z0-9_\-.]+')
+_standard_patterns = re.compile(r'NAXIS\d*')
+_standard_keywords = {'SIMPLE', 'EXTEND', 'BSCALE', 'BZERO', 'XTENSION', 'BITPIX',
+                      'PCOUNT', 'GCOUNT', 'EXTNAME', 'CHECKSUM', 'DATASUM'}
 
 
-def keyword_is_relevant(keyword):
+def _keyword_is_relevant(keyword):
     """Check if keyword is relevant. Keywords are considered "irrelevant" if they are already reflected elsewhere in the
      object produced by Astropy."""
-    _standard_keywords = {'SIMPLE', 'EXTEND', 'BSCALE', 'BZERO', 'XTENSION', 'BITPIX',
-                          'PCOUNT', 'GCOUNT', 'EXTNAME', 'CHECKSUM', 'DATASUM'}
-    _standard_patterns = re.compile(r'NAXIS\d*')
-
     return keyword not in _standard_keywords and not _standard_patterns.fullmatch(keyword)
 
 
@@ -55,10 +53,12 @@ class FITSFileImage(_FITSExternalImage):
         Keyword arguments passed on as options to the file handling function.
     """
 
-    def __init__(self, path: str | os.PathLike, index: int = None, **kwargs):
+    def __init__(self, path: str | os.PathLike, index: int = None, *, read_data=True, **kwargs):
         self.filename = os.path.basename(path)
         self.index = index
-        self.name, self.data, self.unit, self._time, self.metadata = _get_image_fields_from_file(path, index, **kwargs)
+        if read_data:
+            self.name, self.data, self.unit, self._time_ref, self.metadata = _get_image_fields_from_file(path, index,
+                                                                                                         **kwargs)
 
     def __eq__(self, other):
         return self.filename == other.filename and self.index == other.index and self.time == other.time
@@ -79,10 +79,12 @@ class FITSURLImage(_FITSExternalImage):
         Keyword arguments passed on as options to the file handling function.
     """
 
-    def __init__(self, url: str, index: int = None, **kwargs):
+    def __init__(self, url: str, index: int = None, *, read_data=True, **kwargs):
         self.url = url
         self.index = index
-        self.name, self.data, self.unit, self._time, self.metadata = _get_image_fields_from_file(url, index, **kwargs)
+        if read_data:
+            self.name, self.data, self.unit, self._time_ref, self.metadata = _get_image_fields_from_file(url, index,
+                                                                                                         **kwargs)
 
     def __eq__(self, other):
         return self.url == other.url and self.index == other.index and self.time == other.time
@@ -103,11 +105,11 @@ def image_from_fits_file(path: str | os.PathLike, index: int = None, *, name: st
     **kwargs
         Keyword arguments passed on as options to the file handling function.
     """
-    _name, data, unit, _time, metadata = _get_image_fields_from_file(path, index, **kwargs)
+    _name, data, unit, _time_ref, metadata = _get_image_fields_from_file(path, index, **kwargs)
     if name is None:
         name = _name
     image = aotpy.Image(name=name, data=data, unit=unit, metadata=metadata)
-    image._time = _time
+    image._time_ref = _time_ref
     return image
 
 
@@ -124,11 +126,11 @@ def image_from_hdus(hdus: fits.HDUList, index: int = None, *, name: str = None) 
     name: str, optional
         Name of the Image. If None, the name is the same as in the HDU.
     """
-    _name, data, unit, _time, metadata = _get_image_fields_from_hdus(hdus, index)
+    _name, data, unit, _time_ref, metadata = _get_image_fields_from_hdus(hdus, index)
     if name is None:
         name = _name
     image = aotpy.Image(name=name, data=data, unit=unit, metadata=metadata)
-    image._time = _time
+    image._time_ref = _time_ref
     return image
 
 
@@ -143,11 +145,11 @@ def image_from_hdu(hdu: fits.ImageHDU, *, name: str = None) -> aotpy.Image:
     name: str, optional
         Name of the Image. If None, the name is the same as in the HDU.
     """
-    _name, data, unit, _time, metadata = _get_image_fields_from_hdu(hdu)
+    _name, data, unit, _time_ref, metadata = _get_image_fields_from_hdu(hdu)
     if name is None:
         name = _name
     image = aotpy.Image(name=name, data=data, unit=unit, metadata=metadata)
-    image._time = _time
+    image._time_ref = _time_ref
     return image
 
 
@@ -188,15 +190,15 @@ def _get_image_fields_from_hdus(hdus: fits.HDUList, index: int = None) -> \
 def _get_image_fields_from_hdu(hdu) -> tuple[str, np.ndarray, str, str, list[aotpy.Metadatum]]:
     metadata = metadata_from_hdu(hdu)
     unit = None
-    if (md := next((x for x in metadata if x.key == kw.IMAGE_UNIT), None)) is not None:
+    if (md := next((x for x in metadata if x.key == IMAGE_UNIT), None)) is not None:
         unit = md.value
         metadata.remove(md)
 
-    _time = None
-    if (md := next((x for x in metadata if x.key == kw.TIME_REFERENCE), None)) is not None:
-        _time = md.value
+    time_ref = None
+    if (md := next((x for x in metadata if x.key == TIME_REFERENCE), None)) is not None:
+        time_ref = md.value
         metadata.remove(md)
-    return hdu.name, hdu.data, unit, _time, metadata
+    return hdu.name, hdu.data, unit, time_ref, metadata
 
 
 def card_from_metadatum(md: aotpy.Metadatum) -> fits.Card:
@@ -236,10 +238,10 @@ def metadata_from_hdu(hdu: fits.ImageHDU) -> list[aotpy.Metadatum]:
     """
     # If the keywords are irrelevant they don't need to be part of the image metadata, as that information is already
     # implied in the numpy data.
-    return [metadatum_from_card(card) for card in hdu.header.cards if keyword_is_relevant(card.keyword)]
+    return [metadatum_from_card(card) for card in hdu.header.cards if _keyword_is_relevant(card.keyword)]
 
 
-def datetime_to_iso(d: datetime.datetime):
+def _datetime_to_iso(d: datetime.datetime):
     """
     Convert datetime to ISO format string. If timezone information is present, convert time to UTC and remove
     information.
@@ -250,7 +252,7 @@ def datetime_to_iso(d: datetime.datetime):
         `datetime` to be converted to an ISO string.
     """
     if d is None:
-        return ''
+        return None
     if d.tzinfo is not None:
         # If datetime has timezone data, convert the datetime to UTC and then remove the timezone data.
         # This is done to ensure dt.isoformat() doesn't print UTC offsets.

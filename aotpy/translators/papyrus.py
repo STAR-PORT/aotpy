@@ -2,8 +2,8 @@
 This module contains a class for translating telemetry data produced by the ALPAO RTC, part of the PAPYRUS system. 
 It assumes the MATLAB files produced by ALPAO RTC have been converted to use struct objects instead of classes. 
 The custom MATLAB function makeTelemetryFileReadable is made for this.
-Note that the use of scipy.io.loadmat to read the .mat files in python suppose that these .mat files were 
-saved with the version -v7 of matlab or anterior. scipy.io.loadmat does not work for files saved with matlab -v7.3.
+Note that the usage of scipy.io.loadmat to read the .mat files in Python assumes that these files were saved with the
+version -v7 of matlab or previous. scipy.io.loadmat does not work for files saved with matlab -v7.3 or later.
 """
 
 import datetime
@@ -12,7 +12,7 @@ import importlib.resources
 import numpy as np
 
 import aotpy
-from aotpy.io import image_from_fits_file
+from aotpy.io.fits import image_from_fits_file
 from .base import BaseTranslator
 
 try:
