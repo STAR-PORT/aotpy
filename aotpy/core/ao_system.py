@@ -88,21 +88,19 @@ class AOSystem:
             Optional keyword arguments passed on as options to the writer function.
         """
         if file_type is None:
-            p = Path(filename)
-            ext = p.suffix[1:]
+            ext = Path(filename).suffix[1:]
             if not ext:
-                raise ValueError(f"'{filename}' does not have a file extension. If you know the correct file type, you "
-                                 f"may specify it through the 'file_type' argument. "
+                raise ValueError(f"'{filename}' does not have a file extension. You may pick a filename with an "
+                                 f"extension or specify the type through the 'file_type' argument. "
                                  f"Available types: {str(list(_AVAILABLE_WRITERS.keys()))[1:-1]}")
-            if ext.lower() in ['.zip', '.tar', '.gz', '.tgz'] and len(p.suffixes) > 1:
-                ext = p.suffixes[0]
         else:
             ext = file_type
         if (e := ext.lower()) in _AVAILABLE_WRITERS:
             _AVAILABLE_WRITERS[e](self).write(filename, **kwargs)
         else:
-            raise ValueError(f"No available writer for file type '{ext}'. "
-                             f"Available types: {str(list(_AVAILABLE_WRITERS.keys()))[1:-1]}")
+            raise ValueError(f"No available writer for file type '{ext}'. If the type is incorrect, you may specify it "
+                             f"through the 'file_type' argument. Available types: "
+                             f"{str(list(_AVAILABLE_WRITERS.keys()))[1:-1]}")
 
     @staticmethod
     def read_from_file(filename: str | os.PathLike, file_type: str = None, **kwargs) -> 'AOSystem':
@@ -120,18 +118,22 @@ class AOSystem:
             Optional keyword arguments passed on as options to the reader function.
         """
         if file_type is None:
-            ext = Path(filename).suffix[1:]
+            p = Path(filename)
+            ext = p.suffix[1:]
             if not ext:
-                raise ValueError(f"'{filename}' does not have a file extension. You may pick a filename with an "
-                                 f"extension or specify the type through the 'file_type' argument. "
+                raise ValueError(f"'{filename}' does not have a file extension. If you know the correct file type, you "
+                                 f"may specify it through the 'file_type' argument."
                                  f"Available types: {str(list(_AVAILABLE_READERS.keys()))[1:-1]}")
+            if ext.lower() in ['zip', 'gz', 'tgz'] and len(p.suffixes) > 1:
+                ext = p.suffixes[0][1:]
         else:
             ext = file_type
         if (e := ext.lower()) in _AVAILABLE_READERS:
             return _AVAILABLE_READERS[e](filename, **kwargs).get_system()
         else:
-            raise ValueError(f"No available reader for file type '{ext}'. "
-                             f"Available types: {str(list(_AVAILABLE_READERS.keys()))[1:-1]}")
+            raise ValueError(f"No available reader for file type '{ext}'. If the type is incorrect, you may specify it "
+                             f"through the 'file_type' argument. Available types: "
+                             f"{str(list(_AVAILABLE_READERS.keys()))[1:-1]}")
 
     def __str__(self) -> str:
         if self.name:
