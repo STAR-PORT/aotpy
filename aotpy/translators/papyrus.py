@@ -58,8 +58,8 @@ class PAPYRUSTranslator(BaseTranslator):
         time_stamp_commands = (np.array(data['wfcCommandMetaData']['timestamp'], dtype=float) / 1e9).tolist()
 
         # extract acquisition date from time stamps
-        self.system.date_beginning = datetime.datetime.utcfromtimestamp(time_stamp_commands[0])
-        self.system.date_end = datetime.datetime.utcfromtimestamp(time_stamp_commands[-1])
+        self.system.date_beginning = datetime.datetime.fromtimestamp(time_stamp_commands[0], datetime.UTC)
+        self.system.date_end = datetime.datetime.fromtimestamp(time_stamp_commands[-1], datetime.UTC)
 
         time_measurements = aotpy.Time(uid='Measurements time',
                                        timestamps=time_stamp_measurements,
@@ -95,7 +95,7 @@ class PAPYRUSTranslator(BaseTranslator):
 
             sh = aotpy.ShackHartmann(uid=data['wfsUid'],
                                      source=self.system.sources[0],
-                                     n_valid_subapertures=data['wfsSlopes']['mask'].sum(),
+                                     n_valid_subapertures=np.count_nonzero(data['wfsSlopes']['mask']),
                                      measurements=aotpy.Image(name="PAPYRUS Sh Slopes",
                                                               data=measurements,
                                                               time=time_measurements),
@@ -181,7 +181,7 @@ class PAPYRUSTranslator(BaseTranslator):
             pyramid = aotpy.Pyramid(uid=data['wfsUid'],
                                     source=self.system.sources[0],
                                     dimensions=2,
-                                    n_valid_subapertures=data['wfsSlopes']['mask'].sum(),
+                                    n_valid_subapertures=np.count_nonzero(data['wfsSlopes']['mask']),
                                     measurements=aotpy.Image("PAPYRUS Sh Slopes", measurements),
                                     n_sides=4,
                                     subaperture_mask=aotpy.Image('SH subaperture mask', subaperture_mask))

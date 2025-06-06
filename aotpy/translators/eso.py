@@ -8,6 +8,8 @@ functionality).
 """
 
 import os
+import pathlib
+import re
 import warnings
 from abc import abstractmethod
 from datetime import timedelta, datetime, timezone
@@ -23,10 +25,11 @@ except (ImportError, ModuleNotFoundError):
     tap = None
 
 import aotpy
-from aotpy.io.fits import image_from_fits_file
+from aotpy.io.fits import image_from_fits_file, metadata_from_hdu
 from .base import BaseTranslator
 
 ESO_TAP_OBS = "https://archive.eso.org/tap_obs"
+LOG_PATTERN = re.compile(r'(?P<event_id>\d+) (?P<object>[^ ]+) (?P<event>[^ ]+) (?P<frame>\d+)\n')
 
 
 class ESOTranslator(BaseTranslator):
@@ -237,18 +240,38 @@ class ESOTranslator(BaseTranslator):
         return pix_frame['Pixels'][:, :sizes_x * sizes_y].reshape(-1, sizes_x, sizes_y)
 
     @staticmethod
-    def _stack_slopes(data: np.ndarray, slope_axis: int) -> np.ndarray:
+    def _stack_slopes(data: np.ndarray, subap_axis: int) -> np.ndarray:
         # ESO slopes are ordered tip1, tilt1, tip2, tilt2, etc., so even numbers are tip and odd numbers are tilt.
         # We separate and then stack them.
-        if slope_axis == 0:
+        if subap_axis == 0:
             tip = data[::2]
             tilt = data[1::2]
-        elif slope_axis == 1:
+        elif subap_axis == 1:
             tip = data[:, ::2]
             tilt = data[:, 1::2]
         else:
             raise NotImplementedError
         return np.stack([tip, tilt], axis=1)
+
+    @staticmethod
+    def _get_time_from_table(name: str, frames: fits.FITS_rec) -> aotpy.Time:
+        timestamps_list = []
+        try:
+            timestamps = frames['Seconds'] + frames['USeconds'] / 1.e6
+            if not np.all(timestamps == 0):
+                # For some reason, some files seem to have all Seconds/USeconds set to 0
+                # In that case we do not consider them to be valid
+                timestamps_list = timestamps.tolist()
+        except KeyError:
+            # Some frames don't have timestamps, only frame counters (typically pixels)
+            pass
+        try:
+            # If there's a "HOFrameCounter" we are on a LO loop, and we want to use the HO fcs
+            fcs = frames['HOFrameCounter']
+        except KeyError:
+            fcs = frames['FrameCounter']
+
+        return aotpy.Time(name, timestamps=timestamps_list, frame_numbers=fcs.tolist())
 
     @staticmethod
     def _fix_pointing_format(time: float):
@@ -264,3 +287,66 @@ class ESOTranslator(BaseTranslator):
         image.metadata = [md for md in image.metadata if not md.key.startswith("ESO DPR") and md.key != 'ORIGIN' and
                           md.key != 'RA' and md.key != 'DEC']
         return image
+
+    @classmethod
+    def _image_from_object(cls, path: pathlib.Path, obj: str, time: aotpy.Time, *,
+                           subap_axis: int = None, subap_mask: np.ndarray = None,
+                           act_axis: int = None, act_mask: np.ndarray = None) -> aotpy.Image:
+        pattern = re.compile(fr'{obj}(_(?P<event_id>\d+))?.fits')
+
+        obj_files = [(f.name, match.group('event_id')) for f in path.iterdir() if (match := pattern.fullmatch(f.name))]
+        first_fc = None
+        if len(obj_files) > 1:
+            if time is None:
+                raise NotImplementedError
+            first_fc = time.frame_numbers[0]
+
+        metadata = None
+        arrays = []
+        event_ids = []
+        subap_axis_after = 0 if subap_axis == 0 else 2
+        for file, event_id in obj_files:
+            with fits.open(path / file) as hdus:
+                data: np.ndarray = hdus[0].data
+                if act_axis is not None:
+                    data = data[tuple(act_mask if i == act_axis else slice(None) for i in range(data.ndim))]
+                if subap_axis is not None:
+                    data = cls._stack_slopes(data, subap_axis)
+                    data = data[tuple(subap_mask if i == subap_axis_after else slice(None) for i in range(data.ndim))]
+                arrays.append(np.squeeze(data)) # remove dimensions of size 1
+                if metadata is None:
+                    # Only get metadata from the first
+                    metadata = [md for md in metadata_from_hdu(hdus[0]) if not md.key.startswith("ESO DPR") and
+                                md.key != 'ORIGIN' and md.key != 'RA' and md.key != 'DEC']
+            event_ids.append(event_id)
+        if len(arrays) > 1:
+            logs: dict[str, list[dict]] = {}
+            for filepath in path.iterdir():
+                if filepath.name.endswith('.log'):
+                    with open(filepath) as f:
+                        for line in f:
+                            if match := LOG_PATTERN.fullmatch(line):
+                                logs.setdefault(match.group('event_id'), []).append(match.groupdict())
+                            else:
+                                warnings.warn(f"Invalid log line '{line}' in file '{filepath.name}'")
+                                continue
+
+            fcs = []
+            for event_id in event_ids:
+                if event_id is None:
+                    fcs.append(first_fc)
+                else:
+                    try:
+                        for log in logs[event_id]:
+                            if log['object'] == obj and log['event'] == 'SCHEDULED_CONFIG':
+                                fcs.append(int(log['frame']))
+                                break
+                        else:
+                            fcs.append(None)
+                    except KeyError:
+                        fcs.append(None)
+
+            return aotpy.Image(obj, np.stack(arrays), metadata=metadata, time=aotpy.Time(f'{obj} time',
+                                                                                         frame_numbers=fcs))
+        else:
+            return aotpy.Image(obj, arrays[0], metadata=metadata)

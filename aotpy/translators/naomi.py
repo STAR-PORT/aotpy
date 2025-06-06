@@ -4,7 +4,7 @@ This module contains a class for translating data produced by ESO's NAOMI system
 
 import importlib.resources
 import warnings
-from datetime import datetime
+import datetime
 from pathlib import Path
 
 import numpy as np
@@ -58,14 +58,14 @@ class NAOMITranslator(ESOTranslator):
                                      declination=main_hdr['DEC'])
 
         main_timestamps = main_loop_frame['Seconds'] + main_loop_frame['USeconds'] / 1.e6
-        self.system.date_beginning = datetime.utcfromtimestamp(main_timestamps[0])
-        self.system.date_end = datetime.utcfromtimestamp(main_timestamps[-1])
+        self.system.date_beginning = datetime.datetime.fromtimestamp(main_timestamps[0], datetime.UTC)
+        self.system.date_end = datetime.datetime.fromtimestamp(main_timestamps[-1], datetime.UTC)
         main_frame_numbers = main_loop_frame['FrameCounter']
         loop_time = aotpy.Time('Loop Time', timestamps=main_timestamps.tolist(),
                                frame_numbers=main_frame_numbers.tolist())
 
-        gradients = self._stack_slopes(main_loop_frame['Gradients'], slope_axis=1)
-        reference = self._stack_slopes(fits.getdata(path / 'Acq.DET1.REFSLP_WITH_OFFSETS_0001.fits'), slope_axis=1)[0]
+        gradients = self._stack_slopes(main_loop_frame['Gradients'], subap_axis=1)
+        reference = self._stack_slopes(fits.getdata(path / 'Acq.DET1.REFSLP_WITH_OFFSETS_0001.fits'), subap_axis=1)[0]
         wfs = aotpy.ShackHartmann(
             uid='WFS',
             source=ngs,
@@ -103,9 +103,9 @@ class NAOMITranslator(ESOTranslator):
         modal_coefficients += fits.getdata(path / 'Ctr.MODAL_OFFSETS_ROTATED_0001.fits') * 2
         # These are saved in the DM modal space. Need to add the rotated offsets to get the real coefficients that are
         # then sent to the DM after M2DM conversion.
-        s2m = self._stack_slopes(fits.getdata(path / 'Recn.REC1.CM_0001.fits'), slope_axis=1)
+        s2m = self._stack_slopes(fits.getdata(path / 'Recn.REC1.CM_0001.fits'), subap_axis=1)
         # The S2M matrix is already rotated to to DM modes
-        m2s = self._stack_slopes(fits.getdata(path / 'ModalRecnCalibrat.REF_IM_0001.fits'), slope_axis=0)
+        m2s = self._stack_slopes(fits.getdata(path / 'ModalRecnCalibrat.REF_IM_0001.fits'), subap_axis=0)
 
         try:
             ref_commands = aotpy.Image('Ctr.ACT_POS_REF_MAP', fits.getdata(path / 'Ctr.ACT_POS_REF_MAP_0001.fits')[0])

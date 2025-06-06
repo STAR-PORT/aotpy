@@ -34,8 +34,10 @@ class Image:
     """List of Metadatum objects that describe the Image data."""
 
     def __eq__(self, other):
+        if not isinstance(other, Image):
+            return NotImplemented
         return self.name.upper() == other.name.upper() and \
-            np.allclose(self.data, other.data) and \
+            np.allclose(self.data, other.data, equal_nan=True) and \
             self.unit == other.unit and \
             self.time == other.time and \
             self.metadata == other.metadata
