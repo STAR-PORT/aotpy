@@ -4,7 +4,7 @@ This module contains a class for translating data produced by ESO's ERIS system.
 
 import importlib.resources
 import warnings
-from datetime import datetime
+import datetime
 from pathlib import Path
 
 import numpy as np
@@ -69,8 +69,8 @@ class ERISTranslator(ESOTranslator):
         lgs_pix_frame = fits.getdata(lgs_pixel_file, extname='LGSPixelFrame')
 
         lgs_timestamps = lgs_loop_frame['Seconds'] + lgs_loop_frame['USeconds'] / 1.e6
-        self.system.date_beginning = datetime.utcfromtimestamp(lgs_timestamps[0])
-        self.system.date_end = datetime.utcfromtimestamp(lgs_timestamps[-1])
+        self.system.date_beginning = datetime.datetime.fromtimestamp(lgs_timestamps[0], datetime.UTC)
+        self.system.date_end = datetime.datetime.fromtimestamp(lgs_timestamps[-1], datetime.UTC)
         lgs_frame_numbers = lgs_loop_frame['FrameCounter']
         lgs_time = aotpy.Time('LGS Loop Time', timestamps=lgs_timestamps.tolist(),
                               frame_numbers=lgs_frame_numbers.tolist())
@@ -86,12 +86,12 @@ class ERISTranslator(ESOTranslator):
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)
 
         reference = self._stack_slopes(fits.getdata(self._path / 'LGSAcq.DET1.REFSLP_WITH_OFFSETS.fits'),
-                                       slope_axis=1)[0]
+                                       subap_axis=1)[0]
         lgs_wfs = aotpy.ShackHartmann(
             uid='LGS WFS',
             source=lgs,
             n_valid_subapertures=n_valid_subapertures,
-            measurements=aotpy.Image('LGS Gradients', self._stack_slopes(lgs_loop_frame['Gradients'], slope_axis=1)),
+            measurements=aotpy.Image('LGS Gradients', self._stack_slopes(lgs_loop_frame['Gradients'], subap_axis=1)),
             ref_measurements=aotpy.Image('LGSAcq.DET1.REFSLP_WITH_OFFSETS', reference),
             subaperture_mask=subaperture_mask,
             mask_offsets=[aotpy.Coordinates(0, 0)],
@@ -112,8 +112,8 @@ class ERISTranslator(ESOTranslator):
         lgs_wfs.subaperture_size = \
             lgs_wfs.detector.pixel_intensities.data.shape[0] // lgs_wfs.subaperture_mask.data.shape[0]
 
-        s2m = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.S2M.fits'), slope_axis=1)
-        m2s = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.M2S.fits'), slope_axis=0)
+        s2m = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.S2M.fits'), subap_axis=1)
+        m2s = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.M2S.fits'), subap_axis=0)
 
         lgs_freq = fits.getheader(self._path / 'LGSDet.CFG.DYNAMIC.fits')['FREQ']
         self.system.loops.append(aotpy.ControlLoop(
@@ -138,8 +138,8 @@ class ERISTranslator(ESOTranslator):
             telescope=llt
         )
 
-        cm = self._stack_slopes(fits.getdata(self._path / 'JitRecnOptimiser.JitCM.fits'), slope_axis=1)
-        im = self._stack_slopes(fits.getdata(self._path / 'JitRecnCalibrat.IM.fits'), slope_axis=0)
+        cm = self._stack_slopes(fits.getdata(self._path / 'JitRecnOptimiser.JitCM.fits'), subap_axis=1)
+        im = self._stack_slopes(fits.getdata(self._path / 'JitRecnCalibrat.IM.fits'), subap_axis=0)
         # jit_ref = fits.getdata(path_lgs / 'JitCtr.ACT_POS_REF_MAP_WITH_OFFSETS.fits')[:, 0]
         self.system.loops.append(aotpy.ControlLoop(
             uid='Jitter loop',
@@ -193,12 +193,12 @@ class ERISTranslator(ESOTranslator):
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)
 
         reference = self._stack_slopes(fits.getdata(self._path / 'LOAcq.DET1.REFSLP_WITH_OFFSETS.fits'),
-                                       slope_axis=1)[0]
+                                       subap_axis=1)[0]
         lo_wfs = aotpy.ShackHartmann(
             uid='LO WFS',
             source=ngs,
             n_valid_subapertures=n_valid_subapertures,
-            measurements=aotpy.Image('LO Gradients', self._stack_slopes(lo_loop_frame['Gradients'], slope_axis=1)),
+            measurements=aotpy.Image('LO Gradients', self._stack_slopes(lo_loop_frame['Gradients'], subap_axis=1)),
             ref_measurements=aotpy.Image('LOAcq.DET1.REFSLP_WITH_OFFSETS', reference),
             subaperture_mask=subaperture_mask,
             mask_offsets=[aotpy.Coordinates(0, 0)],
@@ -258,7 +258,7 @@ class ERISTranslator(ESOTranslator):
         lo_wfs.subaperture_size = \
             lo_wfs.detector.pixel_intensities.data.shape[0] // lo_wfs.subaperture_mask.data.shape[0]
 
-        s2m = self._stack_slopes(fits.getdata(self._path / 'LOCtr.SENSOR_2_MODES.fits'), slope_axis=1)
+        s2m = self._stack_slopes(fits.getdata(self._path / 'LOCtr.SENSOR_2_MODES.fits'), subap_axis=1)
 
         self.system.loops.append(aotpy.ControlLoop(
             uid='Low-order loop',
@@ -281,7 +281,7 @@ class ERISTranslator(ESOTranslator):
         )
         self.system.wavefront_correctors.append(trombone)
 
-        s2m = self._stack_slopes(fits.getdata(self._path / 'TruthCtr.SENSOR_2_MODES.fits'), slope_axis=1)
+        s2m = self._stack_slopes(fits.getdata(self._path / 'TruthCtr.SENSOR_2_MODES.fits'), subap_axis=1)
         self.system.loops.append(aotpy.ControlLoop(
             uid='Truth loop',
             input_sensor=lo_wfs,
@@ -297,8 +297,8 @@ class ERISTranslator(ESOTranslator):
         ho_pix_frame = fits.getdata(ho_pixel_file, extname='HOPixelFrame')
 
         ho_timestamps = ho_loop_frame['Seconds'] + ho_loop_frame['USeconds'] / 1.e6
-        self.system.date_beginning = datetime.utcfromtimestamp(ho_timestamps[0])
-        self.system.date_end = datetime.utcfromtimestamp(ho_timestamps[-1])
+        self.system.date_beginning = datetime.datetime.fromtimestamp(ho_timestamps[0], datetime.UTC)
+        self.system.date_end = datetime.datetime.fromtimestamp(ho_timestamps[-1], datetime.UTC)
         ho_frame_numbers = ho_loop_frame['FrameCounter']
         ho_time = aotpy.Time('HO Loop Time', timestamps=ho_timestamps.tolist(),
                              frame_numbers=ho_frame_numbers.tolist())
@@ -312,13 +312,13 @@ class ERISTranslator(ESOTranslator):
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)
 
         reference = self._stack_slopes(fits.getdata(self._path / 'HOAcq.DET1.REFSLP_WITH_OFFSETS.fits'),
-                                       slope_axis=1)[0]
+                                       subap_axis=1)[0]
         ho_wfs = aotpy.ShackHartmann(
             uid='HO WFS',
             source=ngs,
             n_valid_subapertures=n_valid_subapertures,
-            measurements=aotpy.Image('Gradients', self._stack_slopes(ho_loop_frame['Gradients'], slope_axis=1)),
-            ref_measurements=aotpy.Image('HOAcq.DET1.REFSLP_WITH_OFFSETS.fits', reference),
+            measurements=aotpy.Image('Gradients', self._stack_slopes(ho_loop_frame['Gradients'], subap_axis=1)),
+            ref_measurements=aotpy.Image('HOAcq.DET1.REFSLP_WITH_OFFSETS', reference),
             subaperture_mask=subaperture_mask,
             mask_offsets=[aotpy.Coordinates(0, 0)],
             subaperture_intensities=aotpy.Image('Intensities', ho_loop_frame['Intensities'])
@@ -326,7 +326,7 @@ class ERISTranslator(ESOTranslator):
         self.system.wavefront_sensors.append(ho_wfs)
 
         ho_wfs.detector = aotpy.Detector(
-            uid='DET1',
+            uid='HO DET1',
             dark=self._image_from_eso_file(self._path / 'HOAcq.DET1.DARK.fits'),
             weight_map=self._image_from_eso_file(self._path / 'HOAcq.DET1.WEIGHT.fits'),
             sky_background=self._image_from_eso_file(self._path / 'HOAcq.DET1.BACKGROUND.fits'),
@@ -338,8 +338,8 @@ class ERISTranslator(ESOTranslator):
         ho_wfs.subaperture_size = \
             ho_wfs.detector.pixel_intensities.data.shape[0] // ho_wfs.subaperture_mask.data.shape[0]
 
-        s2m = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.S2M.fits'), slope_axis=1)
-        m2s = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.M2S.fits'), slope_axis=0)
+        s2m = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.S2M.fits'), subap_axis=1)
+        m2s = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.M2S.fits'), subap_axis=0)
 
         self.system.loops.append(aotpy.ControlLoop(
             uid='High-order loop',

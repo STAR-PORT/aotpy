@@ -44,6 +44,14 @@ aotpy.translators.galacsi module
    :undoc-members:
    :show-inheritance:
 
+aotpy.translators.gpao module
+-----------------------------
+
+.. automodule:: aotpy.translators.gpao
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 aotpy.translators.naomi module
 ------------------------------
 

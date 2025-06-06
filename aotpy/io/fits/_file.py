@@ -3,7 +3,7 @@ import os
 import re
 import warnings
 from dataclasses import dataclass, field
-from datetime import datetime
+import datetime
 from enum import IntEnum
 
 import numpy as np
@@ -509,8 +509,8 @@ class AOTFITSPrimaryHeader:
     parent: AOTFITSFile
     version: compat.AOTVersion = None
     ao_mode: str = None
-    date_beg: datetime = None
-    date_end: datetime = None
+    date_beg: datetime.datetime = None
+    date_end: datetime.datetime = None
     system_name: str = None
     strehl_ratio: float = None
     strehl_wavelength: float = None
@@ -558,13 +558,13 @@ class AOTFITSPrimaryHeader:
 
         if AOT_DATE_BEG in hdr and (date_str := hdr[AOT_DATE_BEG]):
             try:
-                self.date_beg = datetime.fromisoformat(date_str)
+                self.date_beg = datetime.datetime.fromisoformat(date_str).replace(tzinfo=datetime.UTC)
             except (ValueError, TypeError):
                 self.add_error(AOTFITSErrorLevel.WARNING, f"Keyword '{AOT_DATE_BEG}' improperly formatted.")
 
         if AOT_DATE_END in hdr and (date_str := hdr[AOT_DATE_END]):
             try:
-                self.date_end = datetime.fromisoformat(date_str)
+                self.date_end = datetime.datetime.fromisoformat(date_str).replace(tzinfo=datetime.UTC)
             except (ValueError, TypeError):
                 self.add_error(AOTFITSErrorLevel.WARNING, f"Keyword '{AOT_DATE_END}' improperly formatted.")
 
@@ -775,6 +775,7 @@ class AOTFITSTable:
     def _ensure_has_data(self):
         if not self.uid.data:
             self.add_error(AOTFITSErrorLevel.WARNING, f"'{self.extname}' contains no data (at least one row expected).")
+
     def _ensure_same_length(self, a: AOTField, b: AOTField, independent=False):
         for i, (x, y) in enumerate(zip(a.data, b.data)):
             if not x and not y:
@@ -852,8 +853,9 @@ class AOTFITSTable:
                 # Convert to numpy array and try as much as possible to keep the resulting dtype
                 array = np.array(data)
                 if fld.format == STRING_FORMAT:
-                    col = fits.Column(name=fld.canonical_name,
-                                      format=f'{np.char._get_num_chars(array)}A', unit=fld.unit, array=array)
+                    # re-implements numpy's _get_num_chars for cross compatibility between numpy versions
+                    size = array.itemsize // 4 if issubclass(array.dtype.type, np.str_) else array.itemsize
+                    col = fits.Column(name=fld.canonical_name, format=f'{size}A', unit=fld.unit, array=array)
                 elif fld.format == _s.INTEGER_FORMAT:
                     if (t := array.dtype) == np.int16 or t == np.int8:
                         f = '1I'
@@ -1246,7 +1248,6 @@ class AOTFITSTableWavefrontSensors(AOTFITSTable):
         # TODO "source" should not be a science star
         self._ensure_has_data()
         self._ensure_same_length(self.mask_x_offsets, self.mask_y_offsets)
-
 
 
 class AOTFITSTableWavefrontSensorsShackHartmann(AOTFITSSecondaryTable):

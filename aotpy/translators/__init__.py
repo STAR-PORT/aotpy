@@ -8,5 +8,6 @@ The aotpy objects created by these translators can be handled as any other aotpy
 from .ciao import CIAOTranslator
 from .eris import ERISTranslator
 from .galacsi import GALACSITranslator
+from .gpao import GPAOTranslator
 from .naomi import NAOMITranslator
 from .papyrus import PAPYRUSTranslator

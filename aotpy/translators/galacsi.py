@@ -4,7 +4,7 @@ This module contains a class for translating data produced by ESO's GALACSI syst
 
 import importlib.resources
 import warnings
-from datetime import datetime
+import datetime
 from pathlib import Path
 
 import numpy as np
@@ -57,8 +57,8 @@ class GALACSITranslator(ESOTranslator):
         self.system.wavefront_correctors.append(self.dsm)
 
         lgs_timestamps = lgs_loop_frame['Seconds'] + lgs_loop_frame['USeconds'] / 1.e6
-        self.system.date_beginning = datetime.utcfromtimestamp(lgs_timestamps[0])
-        self.system.date_end = datetime.utcfromtimestamp(lgs_timestamps[-1])
+        self.system.date_beginning = datetime.datetime.fromtimestamp(lgs_timestamps[0], datetime.UTC)
+        self.system.date_end = datetime.datetime.fromtimestamp(lgs_timestamps[-1], datetime.UTC)
         lgs_frame_numbers = lgs_loop_frame['FrameCounter']
         lgs_time = aotpy.Time('LGS Loop Time', timestamps=lgs_timestamps.tolist(),
                               frame_numbers=lgs_frame_numbers.tolist())
@@ -83,9 +83,9 @@ class GALACSITranslator(ESOTranslator):
             lgs = aotpy.SodiumLaserGuideStar(uid=f'LGS{i}', laser_launch_telescope=llt)
             self.system.sources.append(lgs)
 
-            gradients = self._stack_slopes(lgs_loop_frame[f'WFS{i}_Gradients'], slope_axis=1)
+            gradients = self._stack_slopes(lgs_loop_frame[f'WFS{i}_Gradients'], subap_axis=1)
             reference = self._stack_slopes(fits.getdata(path_lgs / f'LGSAcq.DET{i}.REFSLP_WITH_OFFSETS.fits'),
-                                           slope_axis=1)[0]
+                                           subap_axis=1)[0]
             wfs = aotpy.ShackHartmann(
                 uid=f'LGS WFS{i}',
                 source=lgs,
@@ -103,8 +103,8 @@ class GALACSITranslator(ESOTranslator):
             )
             self.system.wavefront_sensors.append(wfs)
 
-            cm = self._stack_slopes(fits.getdata(path_lgs / f'LGSRecn.REC{i}.HOCM.fits')[self.dsm_valid], slope_axis=1)
-            im = self._stack_slopes(im_list[i - 1], slope_axis=0)
+            cm = self._stack_slopes(fits.getdata(path_lgs / f'LGSRecn.REC{i}.HOCM.fits')[self.dsm_valid], subap_axis=1)
+            im = self._stack_slopes(im_list[i - 1], subap_axis=0)
             self.system.loops.append(aotpy.ControlLoop(
                 uid=f'High-order loop {i}',
                 input_sensor=wfs,
@@ -123,7 +123,7 @@ class GALACSITranslator(ESOTranslator):
                 telescope=llt
             )
 
-            cm = self._stack_slopes(fits.getdata(path_lgs / f'JitRecnOptimiser.JitCM{i}.fits'), slope_axis=1)
+            cm = self._stack_slopes(fits.getdata(path_lgs / f'JitRecnOptimiser.JitCM{i}.fits'), subap_axis=1)
             self.system.loops.append(aotpy.ControlLoop(
                 uid=f'Jitter loop {i}',
                 input_sensor=wfs,
@@ -173,8 +173,8 @@ class GALACSITranslator(ESOTranslator):
         ngs = aotpy.NaturalGuideStar('NGS')
         self.system.sources.append(ngs)
 
-        gradients = self._stack_slopes(ir_loop_frame['WFS_Gradients'], slope_axis=1)
-        reference = self._stack_slopes(fits.getdata(path_ir / 'IRAcq.DET1.REFSLP_WITH_OFFSETS.fits'), slope_axis=1)[0]
+        gradients = self._stack_slopes(ir_loop_frame['WFS_Gradients'], subap_axis=1)
+        reference = self._stack_slopes(fits.getdata(path_ir / 'IRAcq.DET1.REFSLP_WITH_OFFSETS.fits'), subap_axis=1)[0]
         ngs_wfs = aotpy.ShackHartmann(
             uid='NGS WFS1',
             n_valid_subapertures=4,  # All subapertures are valid
@@ -212,7 +212,7 @@ class GALACSITranslator(ESOTranslator):
                                           time=pix_time)
         )
 
-        s2m = self._stack_slopes(fits.getdata(path_ir / 'IRCtr.SENSOR_2_MODES.fits'), slope_axis=1)
+        s2m = self._stack_slopes(fits.getdata(path_ir / 'IRCtr.SENSOR_2_MODES.fits'), subap_axis=1)
         m2c = fits.getdata(path_ir / 'IRCtr.MODES_2_ACT.fits')[self.dsm_valid]
         self.system.loops.append(aotpy.ControlLoop(
             uid='Low-order loop',

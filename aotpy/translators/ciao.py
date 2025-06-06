@@ -3,7 +3,7 @@ This module contains a class for translating data produced by ESO's CIAO system.
 """
 
 import warnings
-from datetime import datetime
+import datetime
 from pathlib import Path
 
 import numpy as np
@@ -53,14 +53,14 @@ class CIAOTranslator(ESOTranslator):
                                      declination=main_hdr['DEC'])
 
         main_timestamps = main_loop_frame['Seconds'] + main_loop_frame['USeconds'] / 1.e6
-        self.system.date_beginning = datetime.utcfromtimestamp(main_timestamps[0])
-        self.system.date_end = datetime.utcfromtimestamp(main_timestamps[-1])
+        self.system.date_beginning = datetime.datetime.fromtimestamp(main_timestamps[0], datetime.UTC)
+        self.system.date_end = datetime.datetime.fromtimestamp(main_timestamps[-1], datetime.UTC)
         main_frame_numbers = main_loop_frame['FrameCounter']
         loop_time = aotpy.Time('Loop Time', timestamps=main_timestamps.tolist(),
                                frame_numbers=main_frame_numbers.tolist())
 
-        gradients = self._stack_slopes(main_loop_frame['Gradients'], slope_axis=1)
-        reference = self._stack_slopes(fits.getdata(path / 'Acq.DET1.REFSLP_0001.fits'), slope_axis=1)[0]
+        gradients = self._stack_slopes(main_loop_frame['Gradients'], subap_axis=1)
+        reference = self._stack_slopes(fits.getdata(path / 'Acq.DET1.REFSLP_0001.fits'), subap_axis=1)[0]
         wfs = aotpy.ShackHartmann(
             uid='WFS',
             source=ngs,
@@ -83,11 +83,11 @@ class CIAOTranslator(ESOTranslator):
                                        n_valid_actuators=60)
         ittm = aotpy.TipTiltMirror('Image Tip-Tilt Mirror (ITTM)', telescope=self.system.main_telescope)
 
-        cm = self._stack_slopes(fits.getdata(path / 'Recn.REC1.CM_0001.fits'), slope_axis=1)
+        cm = self._stack_slopes(fits.getdata(path / 'Recn.REC1.CM_0001.fits'), subap_axis=1)
         ho_cm = cm[: ho_dm.n_valid_actuators]
         tt_cm = cm[ho_dm.n_valid_actuators:]
 
-        s2m = self._stack_slopes(fits.getdata(path / 'RecnOptimiser.S2M_0001.fits'), slope_axis=1)
+        s2m = self._stack_slopes(fits.getdata(path / 'RecnOptimiser.S2M_0001.fits'), subap_axis=1)
         if main_hdr['ESO AOS CM MODES CONTROLLED'] != s2m.shape[0]:
             warnings.warn("Keyword 'ESO AOS CM MODES CONTROLLED' does not match modes in measurements to modes matrix")
         s2m = aotpy.Image('RecnOptimiser.S2M', s2m)
@@ -96,7 +96,7 @@ class CIAOTranslator(ESOTranslator):
         ho_m2c = m2c[:ho_dm.n_valid_actuators]
         tt_m2c = m2c[ho_dm.n_valid_actuators:]
 
-        ho_im = self._stack_slopes(fits.getdata(path / 'RecnOptimiser.HO_IM_0001.fits'), slope_axis=0)
+        ho_im = self._stack_slopes(fits.getdata(path / 'RecnOptimiser.HO_IM_0001.fits'), subap_axis=0)
         ho_loop = aotpy.ControlLoop(
             'HO Loop',
             input_sensor=wfs,
