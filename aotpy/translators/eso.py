@@ -120,7 +120,7 @@ class ESOTranslator(BaseTranslator):
         telescope = self._get_eso_telescope_name()
         metadata = {
             'ORIGIN': 'ESO-PARANAL',
-            'DATE': datetime.now().isoformat(timespec='milliseconds'),
+            'DATE': datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec='milliseconds'),
             'TELESCOP': telescope.replace('%', ''),
             'INSTRUME': self._get_eso_ao_name(),
             'ESO DET CHIP1 ID': self._get_chip_id(),

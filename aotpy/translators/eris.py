@@ -112,8 +112,10 @@ class ERISTranslator(ESOTranslator):
         lgs_wfs.subaperture_size = \
             lgs_wfs.detector.pixel_intensities.data.shape[0] // lgs_wfs.subaperture_mask.data.shape[0]
 
+        cm = self._stack_slopes(fits.getdata(self._path / f'LGSRecn.REC1.HOCM{active_laser}.fits'), subap_axis=1)
         s2m = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.S2M.fits'), subap_axis=1)
         m2s = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.M2S.fits'), subap_axis=0)
+        im = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.SYNTHETIC_LGS_IM.fits'), subap_axis=0)
 
         lgs_freq = fits.getheader(self._path / 'LGSDet.CFG.DYNAMIC.fits')['FREQ']
         self.system.loops.append(aotpy.ControlLoop(
@@ -127,10 +129,12 @@ class ERISTranslator(ESOTranslator):
             framerate=lgs_freq,
             time_filter_num=aotpy.Image('LGSCtr.A_TERMS', fits.getdata(self._path / 'LGSCtr.A_TERMS.fits').T),
             time_filter_den=aotpy.Image('LGSCtr.B_TERMS', fits.getdata(self._path / 'LGSCtr.B_TERMS.fits').T),
+            control_matrix=aotpy.Image(f'LGSRecn.REC1.HOCM{active_laser}', cm),
             measurements_to_modes=aotpy.Image('CLMatrixOptimiser.S2M', s2m),
             modes_to_commands=self._image_from_eso_file(self._path / 'CLMatrixOptimiser.M2V.fits'),
             commands_to_modes=self._image_from_eso_file(self._path / 'CLMatrixOptimiser.V2M.fits'),
             modes_to_measurements=aotpy.Image('CLMatrixOptimiser.M2S', m2s),
+            interaction_matrix=aotpy.Image('CLMatrixOptimiser.SYNTHETIC_LGS_IM', im),
         ))
 
         jit = aotpy.TipTiltMirror(
@@ -338,8 +342,10 @@ class ERISTranslator(ESOTranslator):
         ho_wfs.subaperture_size = \
             ho_wfs.detector.pixel_intensities.data.shape[0] // ho_wfs.subaperture_mask.data.shape[0]
 
+        cm = self._stack_slopes(fits.getdata(self._path / 'HORecn.REC1.HOCM.fits'), subap_axis=1)
         s2m = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.S2M.fits'), subap_axis=1)
         m2s = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.M2S.fits'), subap_axis=0)
+        im = self._stack_slopes(fits.getdata(self._path / 'CLMatrixOptimiser.SYNTHETIC_HO_IM.fits'), subap_axis=0)
 
         self.system.loops.append(aotpy.ControlLoop(
             uid='High-order loop',
@@ -352,10 +358,12 @@ class ERISTranslator(ESOTranslator):
             framerate=fits.getheader(self._path / 'HODet.CFG.DYNAMIC.fits')['FREQ'],
             time_filter_num=aotpy.Image('HOCtr.A_TERMS', fits.getdata(self._path / 'HOCtr.A_TERMS.fits').T),
             time_filter_den=aotpy.Image('HOCtr.B_TERMS', fits.getdata(self._path / 'HOCtr.B_TERMS.fits').T),
+            control_matrix=aotpy.Image(f'HORecn.REC1.HOCM', cm),
             measurements_to_modes=aotpy.Image('CLMatrixOptimiser.S2M', s2m),
             modes_to_commands=self._image_from_eso_file(self._path / 'CLMatrixOptimiser.M2V.fits'),
             commands_to_modes=self._image_from_eso_file(self._path / 'CLMatrixOptimiser.V2M.fits'),
             modes_to_measurements=aotpy.Image('CLMatrixOptimiser.M2S', m2s),
+            interaction_matrix=aotpy.Image('CLMatrixOptimiser.SYNTHETIC_HO_IM', im),
         ))
 
     def _get_eso_telescope_name(self) -> str:

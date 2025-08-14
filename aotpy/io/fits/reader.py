@@ -108,9 +108,9 @@ class AOTFITSReader(SystemReader):
         if seg_type == kw.TELESCOPE_SEGMENT_TYPE_MONOLITHIC:
             seg = aotpy.Monolithic()
         else:
-            if t == kw.TELESCOPE_SEGMENT_TYPE_CIRCLE:
+            if seg_type == kw.TELESCOPE_SEGMENT_TYPE_CIRCLE:
                 seg = aotpy.CircularSegments()
-            elif t == kw.TELESCOPE_SEGMENT_TYPE_HEXAGON:
+            elif seg_type == kw.TELESCOPE_SEGMENT_TYPE_HEXAGON:
                 seg = aotpy.HexagonalSegments()
             else:
                 # This should never happen

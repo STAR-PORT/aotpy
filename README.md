@@ -3,7 +3,9 @@
 
 # aotpy
 Helper Python package for handling Adaptive Optics Telemetry (AOT) standard files.
-Basic [documentation available](https://aotpy.readthedocs.io/en/latest/).
+For more information, please check the [published specification for AOT](https://doi.org/10.1051/0004-6361/202348486).
+Basic [package documentation available](https://aotpy.readthedocs.io/en/latest/).
+
 
 ## How to install
 Support is offered for Python 3.10 or later.
