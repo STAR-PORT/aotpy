@@ -6,6 +6,8 @@ This includes scoring cameras and wavefront sensors, and their respective detect
 
 from dataclasses import dataclass, field
 
+import numpy as np
+
 from .aberration import Aberration
 from .base import Referenceable, Coordinates
 from .image import Image
@@ -237,3 +239,84 @@ class Pyramid(WavefrontSensor):
 
     modulation: float = None
     'Modulation amplitude.  (in m units)'
+
+    def get_measurements_from_detector_pixels(self, index: slice | int):
+        """
+        Retrieve measurements from the detector pixels based on the provided index and mask configuration.
+
+        This function extracts pixel intensities from the detector, using the subaperture mask
+        and mask offsets to calculate the corresponding pixel positions. The `index` parameter
+        specifies the frame slice or index for which to retrieve the pixel intensities.
+
+        Parameters
+        ----------
+        index : slice or int
+            The index or slice used to specify the frames to extract from the detector pixel intensities.
+            If an integer is provided, the result will be returned for that frame. If a slice is provided,
+            a corresponding slice of pixel intensities will be returned.
+
+        Returns
+        -------
+        numpy.ndarray
+            An array containing the selected pixel intensities from the detector, with shape
+            `(n, len(self.mask_offsets), s)`, where `n` is the number of frames selected by `index` and `s` is the
+            number of subapertures implied by the subaperture mask (i.e. `np.count_nonzero(subaperture_mask.data!=-1)`).
+
+        Raises
+        ------
+        TypeError
+            If the `index` is not a slice or integer.
+        RuntimeError
+            If any of the required attributes (`detector`, `detector.pixel_intensities`,
+            `subaperture_mask`, `mask_offsets`, or `subaperture_size`) are missing.
+        NotImplementedError
+            If `subaperture_size` is not 1, as it is not supported.
+
+        Example
+        -------
+        pixel_values = get_measurements_from_detector_pixels(slice(0, 10))
+        """
+        if not isinstance(index, (slice, int)):
+            raise TypeError("index must be a slice or an integer")
+
+        _err_text = "Cannot get measurements from detector pixels. Missing: "
+        _missing = []
+        if self.detector is None:
+            _missing.append("detector object")
+        if self.detector.pixel_intensities is None:
+            _missing.append("detector pixel intensities")
+        if self.subaperture_mask is None:
+            _missing.append("subaperture mask")
+        if not self.mask_offsets:
+            _missing.append("mask offsets")
+        if self.subaperture_size is None:
+            _missing.append("subaperture size")
+        if _missing:
+            raise RuntimeError(_err_text + ", ".join(_missing))
+
+        if self.subaperture_size != 1:
+            raise NotImplementedError("Measurements from subaperture size > 1 are not yet implemented.")
+
+        mask = self.subaperture_mask.data
+        rows, cols = np.where(mask != -1)
+        p_indices = mask[rows, cols]
+
+        # Re-order according to indices
+        rel_rows_selected = rows[p_indices]
+        rel_cols_selected = cols[p_indices]
+
+        offsets_x = np.array([int(offset.x) for offset in self.mask_offsets], dtype=int)
+        offsets_y = np.array([int(offset.y) for offset in self.mask_offsets], dtype=int)
+
+        pixels = self.detector.pixel_intensities.data
+
+        # Use broadcasting to compute absolute coordinates
+        abs_rows = offsets_x[:, np.newaxis] + rel_rows_selected[np.newaxis, :]
+        abs_cols = offsets_y[:, np.newaxis] + rel_cols_selected[np.newaxis, :]
+        values = pixels[index, abs_rows, abs_cols]
+
+        if isinstance(index, int):
+            # Keeps interface consistent between slice and index
+            values = values[np.newaxis, ...]
+
+        return values

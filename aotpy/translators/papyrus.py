@@ -31,7 +31,7 @@ class PAPYRUSTranslator(BaseTranslator):
 
         self.system = aotpy.AOSystem(ao_mode='SCAO', name='PAPYRUS')
 
-        papyrus_data_path = importlib.resources.files('aotpy.data') / 'PAPYRUS'
+        papyrus_data_path = importlib.resources.files('aotpy.data.PAPYRUS')
         with importlib.resources.as_file(papyrus_data_path / 'T152_pupil.fits') as p:
             pupil_mask = image_from_fits_file(p, name='T152 PUPIL')
 

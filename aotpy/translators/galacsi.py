@@ -63,7 +63,7 @@ class GALACSITranslator(ESOTranslator):
         lgs_time = aotpy.Time('LGS Loop Time', timestamps=lgs_timestamps.tolist(),
                               frame_numbers=lgs_frame_numbers.tolist())
 
-        galacsi_data_path = importlib.resources.files('aotpy.data') / 'GALACSI'
+        galacsi_data_path = importlib.resources.files('aotpy.data.GALACSI')
         with importlib.resources.as_file(galacsi_data_path / 'subap.fits') as p:
             subaperture_mask = image_from_fits_file(p, name='LGS WFS SUBAPERTURE MASK')
         n_valid_subapertures = np.count_nonzero(subaperture_mask.data != -1)

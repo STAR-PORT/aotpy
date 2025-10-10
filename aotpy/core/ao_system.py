@@ -24,7 +24,7 @@ class AOSystem:
     """Contains all the relevant information about an adaptive optics system.
     Different parts of the system can be accessed via the lists of objects it contains."""
 
-    ao_mode: str = None
+    ao_mode: str
     """Describes the system's AO configuration.
     
     Must be one of ``'SCAO'``, ``'SLAO'``, ``'GLAO'``, ``'MOAO'``, ``'LTAO'`` or ``'MCAO'`` (which respectively stand
