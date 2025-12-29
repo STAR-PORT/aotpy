@@ -29,7 +29,22 @@ class ERISTranslator(ESOTranslator):
 
     def __init__(self, path):
         self._path = Path(path)
-        self.system = aotpy.AOSystem(name='ERIS AO')
+        if (ho_loop_file := self._find_bintable_files('hoLoopData')) is not None \
+                and (ho_pixel_file := self._find_bintable_files('hoPixelData')) is not None:
+            mode = 'SCAO'
+            handling_function = self._handle_ngs_data
+            function_args = (ho_loop_file, ho_pixel_file)
+        elif (lgs_loop_file := self._find_bintable_files('lgsLoopData')) is not None \
+                and (lo_loop_file := self._find_bintable_files('loLoopData')) is not None \
+                and (lgs_pixel_file := self._find_bintable_files('lgsPixelData')) is not None \
+                and (lo_pixel_file := self._find_bintable_files('loPixelData')) is not None:
+            mode = 'LTAO'
+            handling_function = self._handle_lgs_data
+            function_args = (lgs_loop_file, lgs_pixel_file, lo_loop_file, lo_pixel_file)
+        else:
+            raise ValueError('Path does not contain necessary telemetry data.')
+
+        self.system = aotpy.AOSystem(name='ERIS AO', ao_mode=mode)
         self.system.main_telescope = aotpy.MainTelescope(
             uid='ESO VLT UT4',
             enclosing_diameter=8.2,
@@ -42,16 +57,7 @@ class ERISTranslator(ESOTranslator):
         )
         self.system.wavefront_correctors.append(self.dsm)
 
-        if (ho_loop_file := self._find_bintable_files('hoLoopData')) is not None \
-                and (ho_pixel_file := self._find_bintable_files('hoPixelData')) is not None:
-            self._handle_ngs_data(ho_loop_file, ho_pixel_file)
-        elif (lgs_loop_file := self._find_bintable_files('lgsLoopData')) is not None \
-                and (lo_loop_file := self._find_bintable_files('loLoopData')) is not None \
-                and (lgs_pixel_file := self._find_bintable_files('lgsPixelData')) is not None \
-                and (lo_pixel_file := self._find_bintable_files('loPixelData')) is not None:
-            self._handle_lgs_data(lgs_loop_file, lgs_pixel_file, lo_loop_file, lo_pixel_file)
-        else:
-            raise ValueError('Path does not contain necessary telemetry data.')
+        handling_function(*function_args)
 
     def _find_bintable_files(self, name):
         file = list(self._path.glob(f'{name}_*.fits'))
@@ -64,7 +70,6 @@ class ERISTranslator(ESOTranslator):
             return file
 
     def _handle_lgs_data(self, lgs_loop_file, lgs_pixel_file, lo_loop_file, lo_pixel_file):
-        self.system.ao_mode = 'LTAO'
         lgs_loop_frame = fits.getdata(lgs_loop_file, extname='LGSLoopFrame')
         lgs_pix_frame = fits.getdata(lgs_pixel_file, extname='LGSPixelFrame')
 
@@ -296,7 +301,6 @@ class ERISTranslator(ESOTranslator):
         ))
 
     def _handle_ngs_data(self, ho_loop_file, ho_pixel_file):
-        self.system.ao_mode = 'SCAO'
         ho_loop_frame = fits.getdata(ho_loop_file, extname='HOLoopFrame')
         ho_pix_frame = fits.getdata(ho_pixel_file, extname='HOPixelFrame')
 

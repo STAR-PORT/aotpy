@@ -21,7 +21,7 @@ class BaseTranslator(ABC):
 
     @abstractmethod
     def __init__(self, *args) -> None:
-        self.system: aotpy.AOSystem = aotpy.AOSystem()
+        self.system: aotpy.AOSystem = aotpy.AOSystem(ao_mode='SCAO')
 
     @classmethod
     def translate(cls, *args) -> aotpy.AOSystem:
